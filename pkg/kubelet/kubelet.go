@@ -121,60 +121,54 @@ import (
 )
 
 const (
-	// Max amount of time to wait for the container runtime to come up.
+	// 等待容器运行时启动的最大时间 30s.
 	maxWaitForContainerRuntime = 30 * time.Second
 
-	// Max amount of time to wait for node list/watch to initially sync
+	// 等待节点列表/监视初始同步的最大时间
 	maxWaitForAPIServerSync = 10 * time.Second
 
-	// nodeStatusUpdateRetry specifies how many times kubelet retries when posting node status failed.
+	// 指定kubelet在发布节点状态失败时重试的次数 5.
 	nodeStatusUpdateRetry = 5
 
-	// ContainerLogsDir is the location of container logs.
+	// 容器日志的位置.
 	ContainerLogsDir = "/var/log/containers"
 
-	// MaxContainerBackOff is the max backoff period, exported for the e2e test
+	// 端到端测试导出的最大回退周期
 	MaxContainerBackOff = 300 * time.Second
 
-	// Period for performing global cleanup tasks.
+	// 执行全局清理任务的周期.
 	housekeepingPeriod = time.Second * 2
 
-	// Period for performing eviction monitoring.
-	// ensure this is kept in sync with internal cadvisor housekeeping.
+	// 执行驱逐监控的时间。确保这与内部cadvisor的内务保持同步.
 	evictionMonitoringPeriod = time.Second * 10
 
-	// The path in containers' filesystems where the hosts file is mounted.
+	// 挂载hosts文件的容器文件系统中的路径.
 	linuxEtcHostsPath   = "/etc/hosts"
 	windowsEtcHostsPath = "C:\\Windows\\System32\\drivers\\etc\\hosts"
 
-	// Capacity of the channel for receiving pod lifecycle events. This number
-	// is a bit arbitrary and may be adjusted in the future.
+	// 接收pod生命周期事件的通道容量。这个数字有点随意，将来可能会调整 .
 	plegChannelCapacity = 1000
 
-	// Generic PLEG relies on relisting for discovering container events.
-	// A longer period means that kubelet will take longer to detect container
-	// changes and to update pod status. On the other hand, a shorter period
-	// will cause more frequent relisting (e.g., container runtime operations),
-	// leading to higher cpu usage.
-	// Note that even though we set the period to 1s, the relisting itself can
-	// take more than 1s to finish if the container runtime responds slowly
-	// and/or when there are many container changes in one cycle.
+	/*
+	pleg重新刊登期
+	通用PLEG依靠重新列出来发现容器事件。 较长的时间意味着kubelet将需要更长的时间来检测容器更改并更新容器状态。
+	另一方面，较短的时间段将导致更频繁的重新列出（例如，容器运行时操作），从而导致较高的CPU使用率。
+	请注意，即使我们将周期设置为1s，如果容器运行时响应缓慢和/或一个周期中有许多容器更改，则重新列出本身可能需要1秒钟以上的时间才能完成。
+	*/
 	plegRelistPeriod = time.Second * 1
 
-	// backOffPeriod is the period to back off when pod syncing results in an
-	// error. It is also used as the base period for the exponential backoff
-	// container restarts and image pulls.
+	// 是pod同步导致错误时要退回的时间段。 它也用作指数补偿容器重新启动和镜像提取的基准时间.
 	backOffPeriod = time.Second * 10
 
-	// ContainerGCPeriod is the period for performing container garbage collection.
+	// 执行容器垃圾回收的周期
 	ContainerGCPeriod = time.Minute
-	// ImageGCPeriod is the period for performing image garbage collection.
+	// 执行镜像垃圾收集的周期.
 	ImageGCPeriod = 5 * time.Minute
 
-	// Minimum number of dead containers to keep in a pod
+	// pod中容器的最少死亡数量
 	minDeadContainerInPod = 1
 
-	// nodeLeaseRenewIntervalFraction is the fraction of lease duration to renew the lease
+	// 续订租约的租约期限的一部分
 	nodeLeaseRenewIntervalFraction = 0.25
 )
 
@@ -187,7 +181,7 @@ func getContainerEtcHostsPath() string {
 	return linuxEtcHostsPath
 }
 
-// SyncHandler is an interface implemented by Kubelet, for testability
+// SyncHandler是一个由Kubelet实现的接口，用于可测试性
 type SyncHandler interface {
 	HandlePodAdditions(pods []*v1.Pod)
 	HandlePodUpdates(pods []*v1.Pod)
@@ -197,10 +191,10 @@ type SyncHandler interface {
 	HandlePodCleanups() error
 }
 
-// Option is a functional option type for Kubelet
+// Kubelet的功能选项类型
 type Option func(*Kubelet)
 
-// Bootstrap is a bootstrapping interface for kubelet, targets the initialization protocol
+// kubelet的引导接口，目标是初始化协议
 type Bootstrap interface {
 	GetConfiguration() kubeletconfiginternal.KubeletConfiguration
 	BirthCry()
@@ -255,8 +249,7 @@ type DockerOptions struct {
 	ImagePullProgressDeadline time.Duration
 }
 
-// makePodSourceConfig creates a config.PodConfig from the given
-// KubeletConfiguration or returns an error.
+// 从给定的KubeletConfiguration创建config.PodConfig或返回错误.
 func makePodSourceConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, kubeDeps *Dependencies, nodeName types.NodeName) (*config.PodConfig, error) {
 	manifestURLHeader := make(http.Header)
 	if len(kubeCfg.StaticPodURLHeader) > 0 {
@@ -289,7 +282,7 @@ func makePodSourceConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, ku
 	return cfg, nil
 }
 
-// PreInitRuntimeService will init runtime service before RunKubelet.
+// 在RunKubelet之前初始化runtime服务.
 func PreInitRuntimeService(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	kubeDeps *Dependencies,
 	crOptions *config.ContainerRuntimeOptions,
@@ -339,8 +332,8 @@ func PreInitRuntimeService(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	return nil
 }
 
-// NewMainKubelet instantiates a new Kubelet object along with all the required internal modules.
-// No initialization of Kubelet and its modules should happen here.
+// 实例化一个新的Kubelet对象以及所有必需的内部模块。
+// 这里不应该发生Kubelet及其模块的初始化.
 func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	kubeDeps *Dependencies,
 	crOptions *config.ContainerRuntimeOptions,
