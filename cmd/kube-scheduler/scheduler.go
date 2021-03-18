@@ -31,13 +31,14 @@ import (
 )
 
 func main() {
+	// 设置随机数种子，加上这行代码，可以保证每次随机都是随机的. 导致重复运行程序，会发现随机数不随机，否则每次运行程序随机数都是相同的
 	rand.Seed(time.Now().UnixNano())
 
 	command := app.NewSchedulerCommand()
 
-	// TODO: once we switch everything over to Cobra commands, we can go back to calling
+	// TODO: 一旦将所有内容切换到Cobra命令，我们就可以返回调用
 	// utilflag.InitFlags() (by removing its pflag.Parse() call). For now, we have to set the
-	// normalize func and add the go flag set by hand.
+	// 标准化func函数并手动添加go flag.
 	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
 	// utilflag.InitFlags()
 	logs.InitLogs()

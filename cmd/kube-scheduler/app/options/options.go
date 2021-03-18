@@ -73,7 +73,7 @@ type Options struct {
 	Master string
 }
 
-// NewOptions returns default scheduler app options.
+// 返回默认的调度程序应用程序选项.
 func NewOptions() (*Options, error) {
 	cfg, err := newDefaultComponentConfig()
 	if err != nil {
@@ -109,11 +109,12 @@ func NewOptions() (*Options, error) {
 		Metrics: metrics.NewOptions(),
 		Logs:    logs.NewOptions(),
 	}
-
+	// 验证
 	o.Authentication.TolerateInClusterLookupFailure = true
 	o.Authentication.RemoteKubeConfigFileOptional = true
 	o.Authorization.RemoteKubeConfigFileOptional = true
 
+	// 证书
 	// Set the PairName but leave certificate directory blank to generate in-memory by default
 	o.SecureServing.ServerCert.CertDirectory = ""
 	o.SecureServing.ServerCert.PairName = "kube-scheduler"

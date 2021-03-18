@@ -57,11 +57,12 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/profile"
 )
 
-// Option configures a framework.Registry.
+// 选项配置框架.
 type Option func(runtime.Registry) error
 
-// NewSchedulerCommand creates a *cobra.Command object with default parameters and registryOptions
+// 使用默认参数和RegistryOptions创建一个 *cobra.Command对象
 func NewSchedulerCommand(registryOptions ...Option) *cobra.Command {
+	// 初始化命令选项
 	opts, err := options.NewOptions()
 	if err != nil {
 		klog.Fatalf("unable to initialize command options: %v", err)

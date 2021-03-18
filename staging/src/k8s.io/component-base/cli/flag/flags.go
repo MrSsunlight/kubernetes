@@ -24,7 +24,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// WordSepNormalizeFunc changes all flags that contain "_" separators
+// 更改所有包含“ _”分隔符的标志
 func WordSepNormalizeFunc(f *pflag.FlagSet, name string) pflag.NormalizedName {
 	if strings.Contains(name, "_") {
 		return pflag.NormalizedName(strings.Replace(name, "_", "-", -1))
