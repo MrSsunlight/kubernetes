@@ -94,13 +94,16 @@ for more information about scheduling and the kube-scheduler component.`,
 		},
 	}
 	fs := cmd.Flags()
+	// 初始化默认flag
 	namedFlagSets := opts.Flags()
+	// 追加用户自定义flag
 	verflag.AddFlags(namedFlagSets.FlagSet("global"))
 	globalflag.AddGlobalFlags(namedFlagSets.FlagSet("global"), cmd.Name())
 	for _, f := range namedFlagSets.FlagSets {
 		fs.AddFlagSet(f)
 	}
 
+	// help 信息
 	usageFmt := "Usage:\n  %s\n"
 	cols, _, _ := term.TerminalSize(cmd.OutOrStdout())
 	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
@@ -112,6 +115,7 @@ for more information about scheduling and the kube-scheduler component.`,
 		fmt.Fprintf(cmd.OutOrStdout(), "%s\n\n"+usageFmt, cmd.Long, cmd.UseLine())
 		cliflag.PrintSections(cmd.OutOrStdout(), namedFlagSets, cols)
 	})
+	// 生成配置文件
 	cmd.MarkFlagFilename("config", "yaml", "yml", "json")
 
 	return cmd

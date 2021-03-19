@@ -147,7 +147,7 @@ func newDefaultComponentConfig() (*kubeschedulerconfig.KubeSchedulerConfiguratio
 	return &cfg, nil
 }
 
-// Flags returns flags for a specific scheduler by section name
+// 根据节名返回特定调度器的标志
 func (o *Options) Flags() (nfs cliflag.NamedFlagSets) {
 	fs := nfs.FlagSet("misc")
 	fs.StringVar(&o.ConfigFile, "config", o.ConfigFile, `The path to the configuration file. The following flags can overwrite fields in this file:

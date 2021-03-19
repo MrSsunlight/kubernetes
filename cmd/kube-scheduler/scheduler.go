@@ -33,7 +33,7 @@ import (
 func main() {
 	// 设置随机数种子，加上这行代码，可以保证每次随机都是随机的. 导致重复运行程序，会发现随机数不随机，否则每次运行程序随机数都是相同的
 	rand.Seed(time.Now().UnixNano())
-
+	// 初始化cmd 数据结构以及flag
 	command := app.NewSchedulerCommand()
 
 	// TODO: 一旦将所有内容切换到Cobra命令，我们就可以返回调用
