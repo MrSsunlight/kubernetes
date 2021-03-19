@@ -152,6 +152,7 @@ type Command struct {
 	SuggestionsMinimumDistance int
 
 	// TraverseChildren parses flags on all parents before executing child command.
+	// 在执行子命令之前，TraverseChildren解析所有父节点上的标志
 	TraverseChildren bool
 
 	// FParseErrWhitelist flag parse errors to be ignored
@@ -902,6 +903,7 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 	}
 
 	// 无论在什么情况下调用命令执行，都只能在根目录上运行
+	// 如果是子命令者查找其父命令直到root上
 	if c.HasParent() {
 		return c.Root().ExecuteC()
 	}
@@ -922,7 +924,7 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 		args = os.Args[1:]
 	}
 
-	// initialize the hidden command to be used for bash completion
+	// 初始化用于bash完成的隐藏命令
 	c.initCompleteCmd(args)
 
 	var flags []string
