@@ -57,25 +57,30 @@ import (
 // process PV/PVC added/updated/deleted events. The real binding, provisioning,
 // recycling and deleting is done in pv_controller.go
 
-// ControllerParameters contains arguments for creation of a new
-// PersistentVolume controller.
+// ControllerParameters 包含用于创建新的PersistentVolume控制器的参数.
 type ControllerParameters struct {
 	KubeClient                clientset.Interface
+	// 同步时间
 	SyncPeriod                time.Duration
 	VolumePlugins             []vol.VolumePlugin
 	Cloud                     cloudprovider.Interface
 	ClusterName               string
+	// PV
 	VolumeInformer            coreinformers.PersistentVolumeInformer
+	// PVC
 	ClaimInformer             coreinformers.PersistentVolumeClaimInformer
+	// StorageClass
 	ClassInformer             storageinformers.StorageClassInformer
 	PodInformer               coreinformers.PodInformer
 	NodeInformer              coreinformers.NodeInformer
+	// 事件记录器
 	EventRecorder             record.EventRecorder
+	// 启用动态配置
 	EnableDynamicProvisioning bool
 	FilteredDialOptions       *proxyutil.FilteredDialOptions
 }
 
-// NewController creates a new PersistentVolume controller
+// NewController 创建一个新的PersistentVolume控制器
 func NewController(p ControllerParameters) (*PersistentVolumeController, error) {
 	eventRecorder := p.EventRecorder
 	if eventRecorder == nil {
@@ -150,9 +155,7 @@ func NewController(p ControllerParameters) (*PersistentVolumeController, error) 
 	return controller, nil
 }
 
-// initializeCaches fills all controller caches with initial data from etcd in
-// order to have the caches already filled when first addClaim/addVolume to
-// perform initial synchronization of the controller.
+// initializeCaches 用etcd的初始数据填充所有控制器缓存，以便在第一次addClaim/addVolume执行控制器初始同步时缓存已经被填满.
 func (ctrl *PersistentVolumeController) initializeCaches(volumeLister corelisters.PersistentVolumeLister, claimLister corelisters.PersistentVolumeClaimLister) {
 	volumeList, err := volumeLister.List(labels.Everything())
 	if err != nil {
@@ -180,6 +183,7 @@ func (ctrl *PersistentVolumeController) initializeCaches(volumeLister corelister
 }
 
 // enqueueWork adds volume or claim to given work queue.
+// 向给定的工作队列添加volume 或 claim
 func (ctrl *PersistentVolumeController) enqueueWork(queue workqueue.Interface, obj interface{}) {
 	// Beware of "xxx deleted" events
 	if unknown, ok := obj.(cache.DeletedFinalStateUnknown); ok && unknown.Obj != nil {
@@ -202,11 +206,11 @@ func (ctrl *PersistentVolumeController) storeClaimUpdate(claim interface{}) (boo
 	return storeObjectUpdate(ctrl.claims, claim, "claim")
 }
 
-// updateVolume runs in worker thread and handles "volume added",
-// "volume updated" and "periodic sync" events.
+// updateVolume 在工作线程中运行，并处理“卷添加”，“卷更新”和“周期同步”事件.
 func (ctrl *PersistentVolumeController) updateVolume(volume *v1.PersistentVolume) {
 	// Store the new volume version in the cache and do not process it if this
 	// is an old version.
+	// 更新缓存
 	new, err := ctrl.storeVolumeUpdate(volume)
 	if err != nil {
 		klog.Errorf("%v", err)
@@ -215,6 +219,7 @@ func (ctrl *PersistentVolumeController) updateVolume(volume *v1.PersistentVolume
 		return
 	}
 
+	// 核心方法，根据当前 PV 对象的规格对 PV 和 PVC 进行绑定或者解绑
 	err = ctrl.syncVolume(volume)
 	if err != nil {
 		if errors.IsConflict(err) {
@@ -250,8 +255,7 @@ func (ctrl *PersistentVolumeController) deleteVolume(volume *v1.PersistentVolume
 	ctrl.claimQueue.Add(claimKey)
 }
 
-// updateClaim runs in worker thread and handles "claim added",
-// "claim updated" and "periodic sync" events.
+// updateClaim在工作线程中运行，并处理“添加的声明”、“更新的声明”和“周期性同步”事件.
 func (ctrl *PersistentVolumeController) updateClaim(claim *v1.PersistentVolumeClaim) {
 	// Store the new claim version in the cache and do not process it if this is
 	// an old version.
@@ -300,6 +304,7 @@ func (ctrl *PersistentVolumeController) deleteClaim(claim *v1.PersistentVolumeCl
 }
 
 // Run starts all of this controller's control loops
+// 启动控制器的所有控制循环
 func (ctrl *PersistentVolumeController) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer ctrl.claimQueue.ShutDown()
@@ -313,9 +318,11 @@ func (ctrl *PersistentVolumeController) Run(stopCh <-chan struct{}) {
 	}
 
 	ctrl.initializeCaches(ctrl.volumeLister, ctrl.claimLister)
-
+	// 找出pv和pvc列表然后放入到队列volumeQueue和claimQueue中，给volumeWorker和claimWorker进行消费
 	go wait.Until(ctrl.resync, ctrl.resyncPeriod, stopCh)
+	// 不断循环消费volumeQueue队列里面的数据，然后获取到相应的PV执行updateVolume操作
 	go wait.Until(ctrl.volumeWorker, time.Second, stopCh)
+	// 不断的获取PVC，然后调用updateClaim方法进入到syncClaim进行具体的操作
 	go wait.Until(ctrl.claimWorker, time.Second, stopCh)
 
 	metrics.Register(ctrl.volumes.store, ctrl.claims, &ctrl.volumePluginMgr)
@@ -464,8 +471,7 @@ func (ctrl *PersistentVolumeController) volumeWorker() {
 	}
 }
 
-// claimWorker processes items from claimQueue. It must run only once,
-// syncClaim is not reentrant.
+// claimWorker处理来自claimQueue的项。它必须只运行一次，syncClaim是不可重入的.
 func (ctrl *PersistentVolumeController) claimWorker() {
 	workFunc := func() bool {
 		keyObj, quit := ctrl.claimQueue.Get()
