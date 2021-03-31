@@ -54,22 +54,23 @@ type StatefulSetController struct {
 	kubeClient clientset.Interface
 	// control returns an interface capable of syncing a stateful set.
 	// Abstracted out for testing.
+	// 控件返回一个能够同步有状态集的接口.
 	control StatefulSetControlInterface
-	// podControl is used for patching pods.
+	// podControl用于修补Pod.
 	podControl controller.PodControlInterface
-	// podLister is able to list/get pods from a shared informer's store
+	// podLister能够从共享的信息者的商店中列出/获得pod
 	podLister corelisters.PodLister
-	// podListerSynced returns true if the pod shared informer has synced at least once
+	// 如果pod共享的信息源至少同步了一次，则podListerSynced返回true
 	podListerSynced cache.InformerSynced
-	// setLister is able to list/get stateful sets from a shared informer's store
+	// setLister能够从共享的信息者存储中列出/获取状态集
 	setLister appslisters.StatefulSetLister
-	// setListerSynced returns true if the stateful set shared informer has synced at least once
+	// 如果有状态集合共享通知者至少同步了一次，则setListerSynced返回true
 	setListerSynced cache.InformerSynced
-	// pvcListerSynced returns true if the pvc shared informer has synced at least once
+	// 如果pvc共享通知程序至少同步了一次，则pvcListerSynced返回true
 	pvcListerSynced cache.InformerSynced
-	// revListerSynced returns true if the rev shared informer has synced at least once
+	// 如果rev共享通知者至少同步了一次，则revListerSynced返回true
 	revListerSynced cache.InformerSynced
-	// StatefulSets that need to be synced.
+	// 需要同步的状态集(StatefulSet).
 	queue workqueue.RateLimitingInterface
 }
 
@@ -157,7 +158,7 @@ func (ssc *StatefulSetController) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-// addPod adds the statefulset for the pod to the sync queue
+// addPod 将pod的statefulset添加到同步队列中
 func (ssc *StatefulSetController) addPod(obj interface{}) {
 	pod := obj.(*v1.Pod)
 
@@ -191,7 +192,7 @@ func (ssc *StatefulSetController) addPod(obj interface{}) {
 	}
 }
 
-// updatePod adds the statefulset for the current and old pods to the sync queue.
+// updatePod 将当前和旧Pod的statefulset添加到同步队列中.
 func (ssc *StatefulSetController) updatePod(old, cur interface{}) {
 	curPod := cur.(*v1.Pod)
 	oldPod := old.(*v1.Pod)
@@ -238,7 +239,7 @@ func (ssc *StatefulSetController) updatePod(old, cur interface{}) {
 	}
 }
 
-// deletePod enqueues the statefulset for the pod accounting for deletion tombstones.
+// deletePod 将处理删除tombstones的pod的statefulset排队.
 func (ssc *StatefulSetController) deletePod(obj interface{}) {
 	pod, ok := obj.(*v1.Pod)
 
@@ -403,7 +404,7 @@ func (ssc *StatefulSetController) worker() {
 	}
 }
 
-// sync syncs the given statefulset.
+// sync同步给定的statefulset.
 func (ssc *StatefulSetController) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
@@ -424,6 +425,7 @@ func (ssc *StatefulSetController) sync(key string) error {
 		return err
 	}
 
+	// 获取选择器
 	selector, err := metav1.LabelSelectorAsSelector(set.Spec.Selector)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("error converting StatefulSet %v selector: %v", key, err))
@@ -435,11 +437,13 @@ func (ssc *StatefulSetController) sync(key string) error {
 		return err
 	}
 
+	// 根据选择器拿到对应的pod列表
 	pods, err := ssc.getPodsForStatefulSet(set, selector)
 	if err != nil {
 		return err
 	}
 
+	// 往下执行sync操作
 	return ssc.syncStatefulSet(set, pods)
 }
 
@@ -447,6 +451,7 @@ func (ssc *StatefulSetController) sync(key string) error {
 func (ssc *StatefulSetController) syncStatefulSet(set *apps.StatefulSet, pods []*v1.Pod) error {
 	klog.V(4).Infof("Syncing StatefulSet %v/%v with %d pods", set.Namespace, set.Name, len(pods))
 	// TODO: investigate where we mutate the set during the update as it is not obvious.
+	// 这里会调用到StatefulSetControlInterface的实现的UpdateStatefulSet方法中
 	if err := ssc.control.UpdateStatefulSet(set.DeepCopy(), pods); err != nil {
 		return err
 	}
