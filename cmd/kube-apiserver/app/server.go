@@ -179,17 +179,21 @@ cluster's shared state through which all other components interact.`,
 func Run(completeOptions completedServerRunOptions, stopCh <-chan struct{}) error {
 	// To help debugging, immediately log version
 	klog.Infof("Version: %+v", version.Get())
-
+	
+	// 构建服务调用链并判断是否启动非安全的 http server，
+	// http server 链中包含 apiserver 要启动的三个 server，以及为每个 server 注册对应资源的路由
 	server, err := CreateServerChain(completeOptions, stopCh)
 	if err != nil {
 		return err
 	}
 
+	// 该方法主要完成了健康检查、存活检查和OpenAPI路由的注册工作
 	prepared, err := server.PrepareRun()
 	if err != nil {
 		return err
 	}
 
+	// 启动 https server
 	return prepared.Run(stopCh)
 }
 
