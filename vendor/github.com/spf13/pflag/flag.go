@@ -218,8 +218,11 @@ func sortFlags(flags map[NormalizedName]*Flag) []*Flag {
 	return result
 }
 
-// 允许您添加一个可以转换标志名称的函数。 添加到FlagSet的标志将被翻译，然后在尝试查找也将被翻译的标志时进行翻译。
-// 因此，可以创建一个名为“ getURL”的标志并将其转换为“ getURL”。 然后，用户可以传递“ --getUrl”，也可以将其翻译为“ geturl”，然后一切正常.
+// SetNormalizeFunc allows you to add a function which can translate flag names.
+// Flags added to the FlagSet will be translated and then when anything tries to
+// look up the flag that will also be translated. So it would be possible to create
+// a flag named "getURL" and have it translated to "geturl".  A user could then pass
+// "--getUrl" which may also be translated to "geturl" and everything will work.
 func (f *FlagSet) SetNormalizeFunc(n func(f *FlagSet, name string) NormalizedName) {
 	f.normalizeNameFunc = n
 	f.sortedFormal = f.sortedFormal[:0]

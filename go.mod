@@ -25,6 +25,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/clusterhq/flocker-go v0.0.0-20160920122132-2b8b7259d313
+	github.com/codegangsta/negroni v1.0.0 // indirect
 	github.com/container-storage-interface/spec v1.3.0
 	github.com/containernetworking/cni v0.8.0
 	github.com/coredns/corefile-migration v1.0.11
@@ -49,11 +50,14 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.4.3
+	github.com/golangplus/bytes v1.0.0 // indirect
+	github.com/golangplus/fmt v1.0.0 // indirect
 	github.com/google/cadvisor v0.39.0
 	github.com/google/go-cmp v0.5.2
 	github.com/google/gofuzz v1.1.0
 	github.com/google/uuid v1.1.2
 	github.com/googleapis/gnostic v0.4.1
+	github.com/gorilla/context v1.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/heketi/heketi v10.2.0+incompatible
 	github.com/heketi/tests v0.0.0-20151005000721-f3775cbcefd6 // indirect

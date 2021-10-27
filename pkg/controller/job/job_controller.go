@@ -19,6 +19,7 @@ package job
 import (
 	"context"
 	"fmt"
+	"kubernetes/vendor/k8s.io/klog/v2"
 	"math"
 	"reflect"
 	"sort"
@@ -51,6 +52,7 @@ import (
 	"k8s.io/utils/integer"
 )
 
+// 状态更新重试
 const statusUpdateRetries = 3
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
@@ -440,6 +442,7 @@ func (jm *Controller) getPodsForJob(j *batch.Job) ([]*v1.Pod, error) {
 // syncJob will sync the job with the given key if it has had its expectations fulfilled, meaning
 // it did not expect to see any more of its pods created or deleted. This function is not meant to be invoked
 // concurrently with the same key.
+// 如果符合预期，syncJob会将作业与给定的密钥同步，意味着不希望有更多的pod 被创建或删除。 此功能并不意味着要使用相同的键并发调用。
 func (jm *Controller) syncJob(key string) (bool, error) {
 	startTime := time.Now()
 	defer func() {
@@ -465,11 +468,13 @@ func (jm *Controller) syncJob(key string) (bool, error) {
 	job := *sharedJob
 
 	// if job was finished previously, we don't want to redo the termination
+	// 如果job已经跑完了，那么直接返回，避免重跑
 	if IsJobFinished(&job) {
 		return true, nil
 	}
 
 	// Cannot create Pods if this is an Indexed Job and the feature is disabled.
+	// 如果这是一个带索引的job，并且该功能被禁用，则无法创建Pod
 	if !utilfeature.DefaultFeatureGate.Enabled(features.IndexedJob) && job.Spec.CompletionMode == batch.IndexedCompletion {
 		jm.recorder.Event(&job, v1.EventTypeWarning, "IndexedJobDisabled", "Skipped Indexed Job sync because feature is disabled.")
 		return false, nil
@@ -480,15 +485,20 @@ func (jm *Controller) syncJob(key string) (bool, error) {
 	// the store after we've checked the expectation, the job sync is just deferred till the next relist.
 	jobNeedsSync := jm.expectations.SatisfiedExpectations(key)
 
+	// 获取这个job的pod列表
 	pods, err := jm.getPodsForJob(&job)
 	if err != nil {
 		return false, err
 	}
+	// 找到这个job中仍然活跃的pod
 	activePods := controller.FilterActivePods(pods)
 	active := int32(len(activePods))
+	// 获取job中运行成功的pod数和运行失败的pod数
 	succeeded, failed := getStatus(&job, pods)
 	// Job first start. Set StartTime and start the ActiveDeadlineSeconds timer
 	// only if the job is not in the suspended state.
+	// job第一次启动。 仅当job未处于挂起状态时，才设置StartTime并启动ActiveDeadlineSeconds计时器
+	// 设置job 的启动时间
 	if job.Status.StartTime == nil && !jobSuspended(&job) {
 		now := metav1.Now()
 		job.Status.StartTime = &now
@@ -674,6 +684,7 @@ func (jm *Controller) deleteJobPods(job *batch.Job, jobKey string, pods []*v1.Po
 
 // pastBackoffLimitOnFailure checks if container restartCounts sum exceeds BackoffLimit
 // this method applies only to pods with restartPolicy == OnFailure
+// pastBackoffLimitOnFailure检查容器restartCounts sum是否超过BackoffLimit此方法仅适用于restartPolicy == OnFailure的pod
 func pastBackoffLimitOnFailure(job *batch.Job, pods []*v1.Pod) bool {
 	if job.Spec.Template.Spec.RestartPolicy != v1.RestartPolicyOnFailure {
 		return false
@@ -701,6 +712,7 @@ func pastBackoffLimitOnFailure(job *batch.Job, pods []*v1.Pod) bool {
 // pastActiveDeadline checks if job has ActiveDeadlineSeconds field set and if
 // it is exceeded. If the job is currently suspended, the function will always
 // return false.
+// 检查job是否设置了activedeadlinesseconds字段，以及是否超过了activedeadlinesseconds字段。如果job当前处于挂起状态，函数将始终返回false
 func pastActiveDeadline(job *batch.Job) bool {
 	if job.Spec.ActiveDeadlineSeconds == nil || job.Status.StartTime == nil || jobSuspended(job) {
 		return false

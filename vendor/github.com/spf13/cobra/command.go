@@ -152,7 +152,6 @@ type Command struct {
 	SuggestionsMinimumDistance int
 
 	// TraverseChildren parses flags on all parents before executing child command.
-	// 在执行子命令之前，TraverseChildren解析所有父节点上的标志
 	TraverseChildren bool
 
 	// FParseErrWhitelist flag parse errors to be ignored
@@ -889,7 +888,9 @@ func (c *Command) ExecuteContext(ctx context.Context) error {
 	return c.Execute()
 }
 
-// 使用args（默认情况下为os.Args [1：]）并在命令树中运行，以找到命令的适当匹配项，然后找到相应的标志.
+// Execute uses the args (os.Args[1:] by default)
+// and run through the command tree finding appropriate matches
+// for commands and then corresponding flags.
 func (c *Command) Execute() error {
 	_, err := c.ExecuteC()
 	return err
@@ -897,13 +898,11 @@ func (c *Command) Execute() error {
 
 // ExecuteC executes the command.
 func (c *Command) ExecuteC() (cmd *Command, err error) {
-	// 上下文
 	if c.ctx == nil {
 		c.ctx = context.Background()
 	}
 
-	// 无论在什么情况下调用命令执行，都只能在根目录上运行
-	// 如果是子命令者查找其父命令直到root上
+	// Regardless of what command execute is called on, run on Root only
 	if c.HasParent() {
 		return c.Root().ExecuteC()
 	}
@@ -924,7 +923,7 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 		args = os.Args[1:]
 	}
 
-	// 初始化用于bash完成的隐藏命令
+	// initialize the hidden command to be used for bash completion
 	c.initCompleteCmd(args)
 
 	var flags []string
@@ -1420,7 +1419,7 @@ func (c *Command) HasAvailableSubCommands() bool {
 	return false
 }
 
-// 确定该命令是否是子命令.
+// HasParent determines if the command is a child command.
 func (c *Command) HasParent() bool {
 	return c.parent != nil
 }
@@ -1430,7 +1429,8 @@ func (c *Command) GlobalNormalizationFunc() func(f *flag.FlagSet, name string) f
 	return c.globNormFunc
 }
 
-//返回应用于此命令的完整的标志集(这里声明的本地和持久的以及由所有父类声明的)
+// Flags returns the complete FlagSet that applies
+// to this command (local and persistent declared here and by all parents).
 func (c *Command) Flags() *flag.FlagSet {
 	if c.flags == nil {
 		c.flags = flag.NewFlagSet(c.Name(), flag.ContinueOnError)
