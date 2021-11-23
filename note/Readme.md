@@ -78,7 +78,7 @@
 - 编译全部组件：`KUBE_BUILD_PLATFORMS=linux/amd64 make all GOFLAGS=-v GOGCFLAGS="-N -l"`
 - 编译指定组件：`cd cmd/kube-apiserver && go build -v` 或 `KUBE_BUILD_PLATFORMS=linux/amd64 make WHAT=cmd/kube-apiserver GOFLAGS=-v GOGCFLAGS="-N -l"`
 ```shell
-- KUBE_BUILD_PLATFORMS=linux/amd64 指定当前编译平台环境类型为 linux/amd64。
+- KUBE_BUILD_PLATFORMS=linux/amd64 指定当前编译平台环境类型为 linux/amd64, mac 为 darwin/amd64
 - make all 表示在本地环境中编译所有组件。
 - GOFLAGS=-v 编译参数，开启 verbose 日志。
 - GOGCFLAGS="-N -l" 编译参数，禁止编译优化和内联，减小可执行程序大小。 
