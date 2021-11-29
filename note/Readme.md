@@ -152,6 +152,9 @@ drwxr-xr-x 4 root root    27 10月 28 15:59 local
 #### 主要功能：
 
 #### 代码入口：
+- `cmd/kube-apiserver/apiserver.go -> main()`: main() 函数入口位置,
+- `cmd/kube-apiserver/app/server.go -> NewAPIServerCommand()`
+-
 
 #### 业务逻辑：
 

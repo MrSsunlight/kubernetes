@@ -89,20 +89,25 @@ const (
 )
 
 // NewAPIServerCommand creates a *cobra.Command object with default parameters
+// NewAPIServerCommand 创建一个带有默认参数的 *cobra.Command 对象
 func NewAPIServerCommand() *cobra.Command {
 	s := options.NewServerRunOptions()
 	cmd := &cobra.Command{
 		Use: "kube-apiserver",
+		// Kubernetes API服务器验证和配置API对象的数据，这些API对象包括pod、services、replicationcontroller 等。
+		// API Server为REST操作提供服务，并提供集群共享状态的前端，所有其他组件都通过它进行交互
 		Long: `The Kubernetes API server validates and configures data
 for the api objects which include pods, services, replicationcontrollers, and
 others. The API Server services REST operations and provides the frontend to the
 cluster's shared state through which all other components interact.`,
 
 		// stop printing usage when the command errors
+		// 命令错误时停止打印用法
 		SilenceUsage: true,
 		PersistentPreRunE: func(*cobra.Command, []string) error {
 			// silence client-go warnings.
 			// kube-apiserver loopback clients should not log self-issued warnings.
+			// 使 client-go 运行警告静音。 kube-apiserver loopback 客户端不应该记录自发出的警告
 			rest.SetDefaultWarningHandler(rest.NoWarnings{})
 			return nil
 		},
@@ -111,12 +116,14 @@ cluster's shared state through which all other components interact.`,
 			cliflag.PrintFlags(cmd.Flags())
 
 			// set default options
+			// 设置默认选项
 			completedOptions, err := Complete(s)
 			if err != nil {
 				return err
 			}
 
 			// validate options
+			// 验证选项
 			if errs := completedOptions.Validate(); len(errs) != 0 {
 				return utilerrors.NewAggregate(errs)
 			}
