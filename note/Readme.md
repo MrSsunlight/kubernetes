@@ -145,11 +145,28 @@ drwxr-xr-x 4 root root    27 10月 28 15:59 local
   make clean && KUBE_BUILD_PLATFORMS=linux/amd64 make all GOFLAGS=-v GOGCFLAGS="-N -l"
 ```
 
+## 官方文档链接
+https://kubernetes.io/zh/docs/home/
+
 ## 模块学习
 
 ### apiserver
 
 #### 主要功能：
+Kubernetes API 服务器验证并配置 API 对象的数据， 这些对象包括 pods、services、replicationcontrollers 等。 API 服务器为 REST 操作提供服务，并为集群的共享状态提供前端， 所有其他组件都通过该前端进行交互
+
+#### 使用：
+`kube-apiserver [flags]`
+
+##### 主要参数:
+- --admission-control-config-file string: 包含准入控制配置的文件
+- --advertise-address string: 向集群成员通知 apiserver 消息的 IP 地址。 这个地址必须能够被集群中其他成员访问。 如果 IP 地址为空，将会使用 --bind-address， 如果未指定 --bind-address，将会使用主机的默认接口地址
+- --alsologtostderr: 在向文件输出日志的同时，也将日志写到标准输出
+- --apiserver-count int(默认值：1): 集群中运行的 API 服务器数量，必须为正数。 （在启用 `--endpoint-reconciler-type=master-count` 时使用。）
+- --audit-log-compress: 若设置了此标志，则被轮换的日志文件会使用 gzip 压缩
+- --audit-log-maxage int: 根据文件名中编码的时间戳保留旧审计日志文件的最大天数
+- --audit-policy-file string: 定义审计策略配置的文件的路径
+- 更多选项参考： [官方文档apiserver部分](https://kubernetes.io/zh/docs/reference/command-line-tools-reference/kube-apiserver/)
 
 #### 代码入口：
 - `cmd/kube-apiserver/apiserver.go -> main()`: main() 函数入口位置,
@@ -160,21 +177,19 @@ drwxr-xr-x 4 root root    27 10月 28 15:59 local
 
 ##### 延申：
 
-#### 使用：
-
-
 ### kube-proxy
 
 #### 主要功能：
+
+#### 使用：
+
+#### 主要参数：
 
 #### 代码入口：
 
 #### 业务逻辑：
 
 ##### 延申：
-
-#### 使用：
-
 
 
 ### scheduler(调度器)
@@ -183,6 +198,36 @@ drwxr-xr-x 4 root root    27 10月 28 15:59 local
 ​	Scheduler是一个跑在其他组件边上的独立程序，对接Apiserver寻找PodSpec.NodeName为空的Pod，然后用post的方式发送一个api调用，指定这些pod应该跑在哪个node上。
 
 ​	通俗地说，就是scheduler是相对独立的一个组件，主动访问api server，寻找等待调度的pod，然后通过一系列调度算法寻找哪个node适合跑这个pod，然后将这个pod和node的绑定关系发给api server，从而完成了调度的过程。
+
+#### 使用：
+
+​	默认调度策略是通过`defaultPredicates()` 和 `defaultPriorities()函数`定义的，源码在 `pkg/scheduler/algorithmprovider/defaults/defaults.go`，可以通过命令行flag `--policy-config-file`来覆盖默认行为。所以可以通过配置文件的方式或者修改`pkg/scheduler/algorithm/predicates/predicates.go` /`pkg/scheduler/algorithm/priorities`，然后注册到`defaultPredicates()`/`defaultPriorities()`来实现。配置文件类似下面这个样子：
+
+```yaml
+{
+"kind" : "Policy",
+"apiVersion" : "v1",
+"predicates" : [
+    {"name" : "PodFitsHostPorts"},
+    {"name" : "PodFitsResources"},
+    {"name" : "NoDiskConflict"},
+    {"name" : "NoVolumeZoneConflict"},
+    {"name" : "MatchNodeSelector"},
+    {"name" : "HostName"}
+    ],
+"priorities" : [
+    {"name" : "LeastRequestedPriority", "weight" : 1},
+    {"name" : "BalancedResourceAllocation", "weight" : 1},
+    {"name" : "ServiceSpreadingPriority", "weight" : 1},
+    {"name" : "EqualPriority", "weight" : 1}
+    ],
+"hardPodAffinitySymmetricWeight" : 10,
+"alwaysCheckAllPredicates" : false
+}
+```
+
+#### 主要参数：
+
 #### 代码入口：
 - `cmd/kube-scheduler/scheduler.go`: main() 函数入口位置，在scheduler过程开始被调用前的一系列初始化工作。
 - `pkg/scheduler/scheduler.go`: 调度框架的整体逻辑，在具体的调度算法之上的框架性的代码。
@@ -240,36 +285,15 @@ Scheduler为每个pod寻找一个适合其运行的node，大体分成三步：
 
 
 
-#### 使用：
 
-​	默认调度策略是通过`defaultPredicates()` 和 `defaultPriorities()函数`定义的，源码在 `pkg/scheduler/algorithmprovider/defaults/defaults.go`，可以通过命令行flag `--policy-config-file`来覆盖默认行为。所以可以通过配置文件的方式或者修改`pkg/scheduler/algorithm/predicates/predicates.go` /`pkg/scheduler/algorithm/priorities`，然后注册到`defaultPredicates()`/`defaultPriorities()`来实现。配置文件类似下面这个样子：
-
-```yaml
-{
-"kind" : "Policy",
-"apiVersion" : "v1",
-"predicates" : [
-    {"name" : "PodFitsHostPorts"},
-    {"name" : "PodFitsResources"},
-    {"name" : "NoDiskConflict"},
-    {"name" : "NoVolumeZoneConflict"},
-    {"name" : "MatchNodeSelector"},
-    {"name" : "HostName"}
-    ],
-"priorities" : [
-    {"name" : "LeastRequestedPriority", "weight" : 1},
-    {"name" : "BalancedResourceAllocation", "weight" : 1},
-    {"name" : "ServiceSpreadingPriority", "weight" : 1},
-    {"name" : "EqualPriority", "weight" : 1}
-    ],
-"hardPodAffinitySymmetricWeight" : 10,
-"alwaysCheckAllPredicates" : false
-}
-```
 
 ### controller(控制器)
 
 #### 主要功能：
+
+#### 使用：
+
+#### 主要参数：
 
 #### 代码入口：
 
@@ -277,20 +301,24 @@ Scheduler为每个pod寻找一个适合其运行的node，大体分成三步：
 
 ##### 延申：
 
-#### 使用：
+
 
 
 ### kubelet
 
 #### 主要功能：
 
+#### 使用：
+
+#### 主要参数：
+
 #### 代码入口：
 
 #### 业务逻辑：
 
 ##### 延申：
 
-#### 使用：
+
 
 
 
@@ -298,10 +326,13 @@ Scheduler为每个pod寻找一个适合其运行的node，大体分成三步：
 
 #### 主要功能：
 
+#### 使用：
+
+#### 主要参数：
+
 #### 代码入口：
 
 #### 业务逻辑：
 
 ##### 延申：
 
-#### 使用：
