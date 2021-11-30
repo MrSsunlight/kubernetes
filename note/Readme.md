@@ -187,14 +187,17 @@ Kubernetes API 服务器验证并配置 API 对象的数据， 这些对象包�
 
 ​	通俗地说，就是scheduler是相对独立的一个组件，主动访问api server，寻找等待调度的pod，然后通过一系列调度算法寻找哪个node适合跑这个pod，然后将这个pod和node的绑定关系发给api server，从而完成了调度的过程。
 
-#### 使用：
+调度器基于约束和可用资源为调度队列中每个 Pod 确定其可合法放置的节点。 调度器之后对所有合法的节点进行排序，将 Pod 绑定到一个合适的节点。 在同一个集群中可以使用多个不同的调度器；
 
-​	默认调度策略是通过`defaultPredicates()` 和 `defaultPriorities()函数`定义的，源码在 `pkg/scheduler/algorithmprovider/defaults/defaults.go`，可以通过命令行flag `--policy-config-file`来覆盖默认行为。所以可以通过配置文件的方式或者修改`pkg/scheduler/algorithm/predicates/predicates.go` /`pkg/scheduler/algorithm/priorities`，然后注册到`defaultPredicates()`/`defaultPriorities()`来实现。配置文件类似下面这个样子：
+#### 使用：
+`kube-scheduler [flags]`
+
+​	默认调度策略是通过`defaultPredicates()` 和 `defaultPriorities()函数`定义的， 源码在 `pkg/scheduler/algorithmprovider/defaults/defaults.go`，可以通过命令行flag `--policy-config-file`来覆盖默认行为。所以可以通过配置文件的方式或者修改`pkg/scheduler/algorithm/predicates/predicates.go` /`pkg/scheduler/algorithm/priorities`，然后注册到`defaultPredicates()`/`defaultPriorities()`来实现。配置文件类似下面这个样子：
 
 ```yaml
 {
-"kind" : "Policy",
 "apiVersion" : "v1",
+"kind" : "Policy",
 "predicates" : [
     {"name" : "PodFitsHostPorts"},
     {"name" : "PodFitsResources"},
@@ -215,6 +218,14 @@ Kubernetes API 服务器验证并配置 API 对象的数据， 这些对象包�
 ```
 
 #### 主要参数：
+- --config string: 配置文件的路径。以下标志会覆盖此文件中的值：
+  --algorithm-provider
+  --policy-config-file
+  --policy-configmap
+  --policy-configmap-namespace
+- --leader-elect (默认值：true): 在执行主循环之前，开始领导者选举并选出领导者。 使用多副本来实现高可用性时，可启用此标志
+- 更多选项参考： [官方文档scheduler部分](https://kubernetes.io/zh/docs/reference/command-line-tools-reference/kube-scheduler/)
+
 
 #### 代码入口：
 - `cmd/kube-scheduler/scheduler.go`: main() 函数入口位置，在scheduler过程开始被调用前的一系列初始化工作。
@@ -260,6 +271,10 @@ Scheduler为每个pod寻找一个适合其运行的node，大体分成三步：
 2. 通过一系列的“priority functions”给剩下的node排一个等级，分出三六九等，寻找能够运行pod的若干node中最合适的一个node；
 3. 得分最高的一个node，也就是被“priority functions”选中的node胜出了，获得了跑对应pod的资格。
 
+
+
+
+
 ##### 延申：
 
 - Predicates是一些用于过滤不合适node的策略。
@@ -295,10 +310,29 @@ Scheduler为每个pod寻找一个适合其运行的node，大体分成三步：
 ### kubelet
 
 #### 主要功能：
+kubelet 是在每个 Node 节点上运行的主要 “节点代理”。它可以使用以下之一向 apiserver 注册： 主机名（hostname）；覆盖主机名的参数；某云驱动的特定逻辑。
+
+kubelet 是基于 PodSpec 来工作的。每个 PodSpec 是一个描述 Pod 的 YAML 或 JSON 对象。 kubelet 接受通过各种机制（主要是通过 apiserver）提供的一组 PodSpec，并确保这些 PodSpec 中描述的容器处于运行状态且运行状况良好。 kubelet 不管理不是由 Kubernetes 创建的容器。
+
+除了来自 apiserver 的 PodSpec 之外，还可以通过以下三种方式将容器清单（manifest）提供给 kubelet。
+
+- 文件（File）：利用命令行参数传递路径。kubelet 周期性地监视此路径下的文件是否有更新。 监视周期默认为 20s，且可通过参数进行配置。
+- HTTP 端点（HTTP endpoint）：利用命令行参数指定 HTTP 端点。 此端点的监视周期默认为 20 秒，也可以使用参数进行配置。
+- HTTP 服务器（HTTP server）：kubelet 还可以侦听 HTTP 并响应简单的 API （目前没有完整规范）来提交新的清单。
 
 #### 使用：
+`kubelet [flags]`
 
 #### 主要参数：
+- --address ip(默认值：0.0.0.0) : kubelet 用来提供服务的 IP 地址（设置为0.0.0.0 表示使用所有 IPv4 接口， 设置为 :: 表示使用所有 IPv6 接口）
+- --anonymous-auth (默认值：true) : 设置为 true 表示 kubelet 服务器可以接受匿名请求。未被任何认证组件拒绝的请求将被视为匿名请求。 匿名请求的用户名为 system:anonymous，用户组为 system:unauthenticated
+- --authentication-token-webhook : 使用 TokenReview API 对持有者令牌进行身份认证
+- --authorization-mode string : kubelet 服务器的鉴权模式。可选值包括：AlwaysAllow、Webhook。Webhook 模式使用 SubjectAccessReview API 鉴权。 当 --config 参数未被设置时，默认值为 AlwaysAllow，当使用了 --config 时，默认值为 Webhook
+- --bootstrap-kubeconfig string : 某 kubeconfig 文件的路径，该文件将用于获取 kubelet 的客户端证书。 如果 --kubeconfig 所指定的文件不存在，则使用引导所用 kubeconfig 从 API 服务器请求客户端证书。成功后，将引用生成的客户端证书和密钥的 kubeconfig 写入 --kubeconfig 所指定的路径。客户端证书和密钥文件将存储在 --cert-dir 所指的目录
+- --cert-dir string (默认值：/var/lib/kubelet/pki) : TLS 证书所在的目录。如果设置了 --tls-cert-file 和 --tls-private-key-file， 则此标志将被忽略
+- --cluster-dns strings: DNS 服务器的 IP 地址，以逗号分隔。此标志值用于 Pod 中设置了 “dnsPolicy=ClusterFirst” 时为容器提供 DNS 服务
+- --cluster-domain string: 集群的域名。如果设置了此值，kubelet 除了将主机的搜索域配置到所有容器之外，还会为其 配置所搜这里指定的域名。 --config 时，默认值为 Webhook
+- 更多选项参考： [官方文档kubelet部分](https://kubernetes.io/zh/docs/reference/command-line-tools-reference/kubelet/)
 
 #### 代码入口：
 
