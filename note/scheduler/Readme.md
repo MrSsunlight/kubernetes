@@ -1,7 +1,8 @@
 # scheduler 源码梳理
 
 ## 函数流转：
-### 1.`cmd/kube-scheduler/scheduler.go` -> main()
+### 1. 从main出发，找到了scheduler主框架的入口(cmd -> pkg)
+#### 1.1 `cmd/kube-scheduler/scheduler.go` -> main()
 
 - kube-scheduler这个二进制文件在运行的时候是调用了`command.Execute()`函数背后的那个Run，那个Run躲在`command := app.NewSchedulerCommand()`这行代码调用的`NewSchedulerCommand()`方法里，这个方法一定返回了一个`*cobra.Command`类型的对象。
 
@@ -18,7 +19,7 @@ func main() {
 ```
 
 
-### 2.`cmd/kube-scheduler/app/server.go` -> NewSchedulerCommand()
+#### 1.2 `cmd/kube-scheduler/app/server.go` -> NewSchedulerCommand()
 
 - schduler启动时调用了runCommand(cmd, args, opts)
 
@@ -52,12 +53,12 @@ func NewSchedulerCommand(registryOptions ...Option) *cobra.Command {
 }
 ```
 
-### 3.`cmd/kube-scheduler/app/server.go` -> runCommand()
+#### 1.3 `cmd/kube-scheduler/app/server.go` -> runCommand()
 
 - 这里是处理配置问题后调用了一个Run()函数，Run()的作用是基于给定的配置启动scheduler，它只会在出错时或者channel stopCh被关闭时才退出
 
 ```go
-// runCommand runs the scheduler.
+// runCommand运行调度(scheduler)程序
 func runCommand(cmd *cobra.Command, opts *options.Options, registryOptions ...Option) error {
 	verflag.PrintAndExitIfRequested()
 	cliflag.PrintFlags(cmd.Flags())
@@ -82,7 +83,7 @@ func runCommand(cmd *cobra.Command, opts *options.Options, registryOptions ...Op
 }
 ```
 
-### 4.`cmd/kube-scheduler/app/server.go` -> run()
+#### 1.4 `cmd/kube-scheduler/app/server.go` -> run()
 
 - 这里最终是要跑sched.Run()这个方法来启动scheduler，sched.Run()方法已经在pkg下，具体位置是`pkg/scheduler/scheduler.go`-> Run(ctx context.Context)，也就是scheduler框架真正运行的逻辑了
 
@@ -131,7 +132,7 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 }
 ```
 
-### 5.`pkg/scheduler/scheduler.go` -> (sched *Scheduler) Run(ctx context.Context) 
+#### 1.5 `pkg/scheduler/scheduler.go` -> (sched *Scheduler) Run(ctx context.Context) 
 
 ```go
 // 开始运行 守望(watch) 和 调度(schedule )。 它等待缓存被同步，然后开始调度和阻塞，直到上下文完成。 
@@ -145,3 +146,6 @@ func (sched *Scheduler) Run(ctx context.Context) {
 }
 ```
 
+### 2. Scheduler的工作过程(pkg)
+
+#### 2.1 
