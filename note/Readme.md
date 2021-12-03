@@ -41,6 +41,12 @@
 | staging | 已经分库的项目               |
 | vendor  | 依赖                         |
 
+
+## 整体架构
+
+![kubernetes架构](./img/kubernetes架构.png)
+
+
 ## 模块划分：
 - Kubernetes 主要由以下几个核心组件组成:
     - etcd 保存了整个集群的状态，就是一个数据库；
