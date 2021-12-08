@@ -309,7 +309,7 @@ Scheduler负责Pod调度。在整个系统中起"承上启下"作用，承上：
 
 
 #### Pod 创建流程
-<img src="./img/what-happens-when-k8s.png" alt="pod 创建流程" style="zoom:50%;" />
+<img src="./img/what-happens-when-k8s.svg" alt="pod 创建流程" style="zoom:50%;" />
 
 
 #### 代码入口：
