@@ -159,7 +159,17 @@ https://kubernetes.io/zh/docs/home/
 ### apiserver
 
 #### 主要功能：
-Kubernetes API 服务器验证并配置 API 对象的数据， 这些对象包括 pods、services、replicationcontrollers 等。 API 服务器为 REST 操作提供服务，并为集群的共享状态提供前端， 所有其他组件都通过该前端进行交互
+Kubernetes API 服务器验证并配置 API 对象的数据， 这些对象包括 pods、services、replicationcontrollers 等。 API 服务器为 REST 操作提供服务，并为集群的共享状态提供前端， 所有其他组件都通过该前端进行交互.
+
+API Server提供了k8s各类资源对象（pod,RC,Service等）的增删改查及watch等HTTP Rest接口，是整个系统的数据总线和数据中心。
+
+- 提供了集群管理的REST API接口(包括认证授权、数据校验以及集群状态变更)；
+- 提供其他模块之间的数据交互和通信的枢纽（其他模块通过API Server查询或修改数据，只有API Server才直接操作etcd）;
+- 是资源配额控制的入口；
+- 拥有完备的集群安全机制.
+
+<img src="./img/kube-apiserver.png" alt="apiserver" style="zoom:50%;" />
+
 
 #### 使用：
 `kube-apiserver [flags]`
@@ -173,6 +183,23 @@ Kubernetes API 服务器验证并配置 API 对象的数据， 这些对象包�
 - --audit-log-maxage int: 根据文件名中编码的时间戳保留旧审计日志文件的最大天数
 - --audit-policy-file string: 定义审计策略配置的文件的路径
 - 更多选项参考： [官方文档apiserver部分](https://kubernetes.io/zh/docs/reference/command-line-tools-reference/kube-apiserver/)
+
+#### 运行
+在单个k8s-master节点上。默认有两个端口
+
+##### 1. 本地端口
+- 该端口用于接收HTTP请求；
+- 该端口默认值为8080，可以通过API Server的启动参数“--insecure-port”的值来修改默认值；
+- 默认的IP地址为“localhost”，可以通过启动参数“--insecure-bind-address”的值来修改该IP地址；
+- 非认证或授权的HTTP请求通过该端口访问API Server。
+
+##### 2. 安全端口
+- 该端口默认值为6443，可通过启动参数“--secure-port”的值来修改默认值；
+- 默认IP地址为非本地（Non-Localhost）网络端口，通过启动参数“--bind-address”设置该值；
+- 该端口用于接收HTTPS请求；
+- 用于基于Tocken文件或客户端证书及HTTP Base的认证；
+- 用于基于策略的授权；
+- 默认不启动HTTPS安全访问控制。
 
 #### 代码入口：
 - `cmd/kube-apiserver/apiserver.go -> main()`: main() 函数入口位置,
@@ -189,16 +216,19 @@ Kubernetes API 服务器验证并配置 API 对象的数据， 这些对象包�
 ### scheduler(调度器)
 
 #### 主要功能：
-​	Scheduler是一个跑在其他组件边上的独立程序，对接Apiserver寻找PodSpec.NodeName为空的Pod，然后用post的方式发送一个api调用，指定这些pod应该跑在哪个node上。
+Scheduler是一个跑在其他组件边上的独立程序，对接Apiserver寻找PodSpec.NodeName为空的Pod，然后用post的方式发送一个api调用，指定这些pod应该跑在哪个node上。
 
-​	通俗地说，就是scheduler是相对独立的一个组件，主动访问api server，寻找等待调度的pod，然后通过一系列调度算法寻找哪个node适合跑这个pod，然后将这个pod和node的绑定关系发给api server，从而完成了调度的过程。
+通俗地说，就是scheduler是相对独立的一个组件，主动访问api server，寻找等待调度的pod，然后通过一系列调度算法寻找哪个node适合跑这个pod，然后将这个pod和node的绑定关系发给api server，从而完成了调度的过程。
 
 调度器基于约束和可用资源为调度队列中每个 Pod 确定其可合法放置的节点。 调度器之后对所有合法的节点进行排序，将 Pod 绑定到一个合适的节点。 在同一个集群中可以使用多个不同的调度器；
+
+Scheduler负责Pod调度。在整个系统中起"承上启下"作用，承上：负责接收Controller Manager创建的新的Pod，为其选择一个合适的Node；启下：Node上的kubelet接管Pod的生命周期。
+
 
 #### 使用：
 `kube-scheduler [flags]`
 
-​	默认调度策略是通过`defaultPredicates()` 和 `defaultPriorities()函数`定义的， 源码在 `pkg/scheduler/algorithmprovider/defaults/defaults.go`，可以通过命令行flag `--policy-config-file`来覆盖默认行为。所以可以通过配置文件的方式或者修改`pkg/scheduler/algorithm/predicates/predicates.go` /`pkg/scheduler/algorithm/priorities`，然后注册到`defaultPredicates()`/`defaultPriorities()`来实现。配置文件类似下面这个样子：
+默认调度策略是通过`defaultPredicates()` 和 `defaultPriorities()函数`定义的， 源码在 `pkg/scheduler/algorithmprovider/defaults/defaults.go`，可以通过命令行flag `--policy-config-file`来覆盖默认行为。所以可以通过配置文件的方式或者修改`pkg/scheduler/algorithm/predicates/predicates.go` /`pkg/scheduler/algorithm/priorities`，然后注册到`defaultPredicates()`/`defaultPriorities()`来实现。配置文件类似下面这个样子：
 
 ```yaml
 {
@@ -231,6 +261,55 @@ Kubernetes API 服务器验证并配置 API 对象的数据， 这些对象包�
   --policy-configmap-namespace
 - --leader-elect (默认值：true): 在执行主循环之前，开始领导者选举并选出领导者。 使用多副本来实现高可用性时，可启用此标志
 - 更多选项参考： [官方文档scheduler部分](https://kubernetes.io/zh/docs/reference/command-line-tools-reference/kube-scheduler/)
+
+
+#### 预选策略
+说明：返回true表示该节点满足该Pod的调度条件；返回false表示该节点不满足该Pod的调度条件。
+
+##### 1. NoDiskConflict
+判断备选Pod的数据卷是否与该Node上已存在Pod挂载的数据卷冲突，如果是则返回false，否则返回true。
+
+##### 2. PodFitsResources
+判断备选节点的资源是否满足备选Pod的需求，即节点的剩余资源满不满足该Pod的资源使用。
+
+- 计算备选Pod和节点中已用资源（该节点所有Pod的使用资源）的总和。
+- 获取备选节点的状态信息，包括节点资源信息。
+- 如果（备选Pod+节点已用资源>该节点总资源）则返回false，即剩余资源不满足该Pod使用；否则返回true。
+
+##### 3. PodSelectorMatches
+判断节点是否包含备选Pod的标签选择器指定的标签，即通过标签来选择Node。
+
+- 如果Pod中没有指定spec.nodeSelector，则返回true。
+- 否则获得备选节点的标签信息，判断该节点的标签信息中是否包含该Pod的spec.nodeSelector中指定的标签，如果包含返回true，否则返回false。
+
+
+##### 4. PodFitsHost
+判断备选Pod的spec.nodeName所指定的节点名称与备选节点名称是否一致，如果一致返回true，否则返回false。
+
+##### 5. CheckNodeLabelPresence
+检查备选节点中是否有Scheduler配置的标签，如果有返回true，否则返回false。
+
+
+##### 6. CheckServiceAffinity
+判断备选节点是否包含Scheduler配置的标签，如果有返回true，否则返回false。
+
+##### 7. PodFitsPorts
+判断备选Pod所用的端口列表中的端口是否在备选节点中已被占用，如果被占用返回false，否则返回true。
+
+#### 优选策略
+
+##### 1. LeastRequestedPriority
+优先从备选节点列表中选择资源消耗最小的节点（CPU+内存）。
+
+##### 2. CalculateNodeLabelPriority
+优先选择含有指定Label的节点。
+
+###### 3. BalancedResourceAllocation
+优先从备选节点列表中选择各项资源使用率最均衡的节点。
+
+
+#### Pod 创建流程
+<img src="./img/what-happens-when-k8s.png" alt="pod 创建流程" style="zoom:50%;" />
 
 
 #### 代码入口：
@@ -295,22 +374,47 @@ Scheduler为每个pod寻找一个适合其运行的node，大体分成三步：
 
 
 
-
 ### controller(控制器)
 
-#### 主要功能：
+#### 1. controller Manager 
 
-#### 使用：
+##### 主要功能：
+Controller Manager作为集群内部的管理控制中心，负责集群内的Node、Pod副本、服务端点（Endpoint）、命名空间（Namespace）、服务账号（ServiceAccount）、资源定额（ResourceQuota）的管理，当某个Node意外宕机时，Controller Manager会及时发现并执行自动化修复流程，确保集群始终处于预期的工作状态。
 
-#### 主要参数：
+每个Controller通过API Server提供的接口实时监控整个集群的每个资源对象的当前状态，当发生各种故障导致系统状态发生变化时，会尝试将系统状态修复到“期望状态”。
 
-#### 代码入口：
 
-#### 业务逻辑：
+<img src="./img/controller-manager.png" alt="controller" style="zoom:50%;" />
+
+
+##### 使用：
+
+##### 主要参数：
+
+##### 代码入口：
+
+##### 业务逻辑：
 
 ##### 延申：
 
 
+#### 2. Replication Controller
+
+
+
+#### 3. Node Controller
+
+
+#### 4. ResourceQuota Controller
+
+#### 5. Namespace Controller
+
+#### 6. Endpoint Controller
+
+
+
+#### 7. Service Controller
+Service Controller是属于kubernetes集群与外部的云平台之间的一个接口控制器。Service Controller监听Service变化，如果是一个LoadBalancer类型的Service，则确保外部的云平台上对该Service对应的LoadBalancer实例被相应地创建、删除及更新路由转发表。
 
 
 ### kubelet
