@@ -1,5 +1,33 @@
 # scheduler 源码梳理
 
+## 目录结构
+cmd/kube-scheduler
+```shell
+├── BUILD
+├── OWNERS
+├── app
+│   ├── BUILD
+│   ├── config
+│   │   ├── BUILD
+│   │   ├── config.go         // 处理未设置的参数项  
+│   │   └── config_test.go
+│   ├── options
+│   │   ├── BUILD
+│   │   ├── configfile.go     // 从文件中读取配置，将配置写入yaml文件
+│   │   ├── deprecated.go     // 处理废弃的参数项
+│   │   ├── deprecated_test.go
+│   │   ├── insecure_serving.go // 针对 insecure_serving 配置， 类似deprecated
+│   │   ├── insecure_serving_test.go
+│   │   ├── options.go        // 调度器配置处理实现
+│   │   └── options_test.go
+│   ├── server.go                   // 调度器初始化运行以及调用pkg实现 
+│   ├── server_test.go
+│   └── testing
+│       ├── BUILD
+│       └── testserver.go
+└── scheduler.go                          // 调度器主入口
+```
+
 ## 函数流转：
 ### 1. 从main出发，找到了scheduler主框架的入口(cmd -> pkg)
 #### 1.1 `cmd/kube-scheduler/scheduler.go` -> main()

@@ -38,6 +38,7 @@ func loadConfigFromFile(file string) (*kubeschedulerconfig.KubeSchedulerConfigur
 
 func loadConfig(data []byte) (*kubeschedulerconfig.KubeSchedulerConfiguration, error) {
 	// The UniversalDecoder runs defaulting and returns the internal type by default.
+	// UniversalDecoder 默认运行并默认返回内部类型
 	obj, gvk, err := kubeschedulerscheme.Codecs.UniversalDecoder().Decode(data, nil, nil)
 	if err != nil {
 		return nil, err
@@ -49,6 +50,7 @@ func loadConfig(data []byte) (*kubeschedulerconfig.KubeSchedulerConfiguration, e
 }
 
 // WriteConfigFile writes the config into the given file name as YAML.
+// WriteConfigFile将配置写入给定的YAML文件名
 func WriteConfigFile(fileName string, cfg *kubeschedulerconfig.KubeSchedulerConfiguration) error {
 	const mediaType = runtime.ContentTypeYAML
 	info, ok := runtime.SerializerInfoForMediaType(kubeschedulerscheme.Codecs.SupportedMediaTypes(), mediaType)

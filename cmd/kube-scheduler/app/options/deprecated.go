@@ -28,6 +28,7 @@ import (
 )
 
 // DeprecatedOptions contains deprecated options and their flags.
+// DeprecatedOptions包含废弃的选项和它们的标志
 // TODO remove these fields once the deprecated flags are removed.
 type DeprecatedOptions struct {
 	// The fields below here are placeholders for flags that can't be directly
@@ -73,6 +74,7 @@ func (o *DeprecatedOptions) AddFlags(fs *pflag.FlagSet, cfg *kubeschedulerconfig
 }
 
 // Validate validates the deprecated scheduler options.
+// Validate验证废弃的调度器选项
 func (o *DeprecatedOptions) Validate() []error {
 	var errs []error
 

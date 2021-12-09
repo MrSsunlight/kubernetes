@@ -53,8 +53,10 @@ import (
 )
 
 // Options has all the params needed to run a Scheduler
+// Options 拥有运行调度器所需的所有参数
 type Options struct {
 	// The default values. These are overridden if ConfigFile is set or by values in InsecureServing.
+	// 默认值。如果设置了ConfigFile或InsecureServing中的值，这些值会被覆盖
 	ComponentConfig kubeschedulerconfig.KubeSchedulerConfiguration
 
 	SecureServing           *apiserveroptions.SecureServingOptionsWithLoopback
@@ -66,9 +68,11 @@ type Options struct {
 	Deprecated              *DeprecatedOptions
 
 	// ConfigFile is the location of the scheduler server's configuration file.
+	// ConfigFile 是调度程序服务器的配置文件的位置
 	ConfigFile string
 
 	// WriteConfigTo is the path where the default configuration will be written.
+	// WriteConfigTo 是将写入默认配置的路径
 	WriteConfigTo string
 
 	Master string
@@ -176,11 +180,13 @@ func (o *Options) Flags() (nfs cliflag.NamedFlagSets) {
 }
 
 // ApplyTo applies the scheduler options to the given scheduler app configuration.
+// ApplyTo将调度器选项应用到给定的调度器应用配置中
 func (o *Options) ApplyTo(c *schedulerappconfig.Config) error {
 	if len(o.ConfigFile) == 0 {
 		c.ComponentConfig = o.ComponentConfig
 
 		// apply deprecated flags if no config file is loaded (this is the old behaviour).
+		// 如果没有加载配置文件，应用弃用标志(这是旧的行为)
 		o.Deprecated.ApplyTo(&c.ComponentConfig)
 		if err := o.CombinedInsecureServing.ApplyTo(c, &c.ComponentConfig); err != nil {
 			return err
@@ -197,15 +203,18 @@ func (o *Options) ApplyTo(c *schedulerappconfig.Config) error {
 		c.ComponentConfig = *cfg
 
 		// apply any deprecated Policy flags, if applicable
+		// 如果适用，应用任何已弃用的策略标志
 		o.Deprecated.ApplyAlgorithmSourceTo(&c.ComponentConfig)
 
 		// if the user has set CC profiles and is trying to use a Policy config, error out
 		// these configs are no longer merged and they should not be used simultaneously
+		// 如果用户已设置 CC 配置文件并尝试使用策略配置，则会出现这些配置不再合并且不应同时使用的错误
 		if !emptySchedulerProfileConfig(c.ComponentConfig.Profiles) && c.ComponentConfig.AlgorithmSource.Policy != nil {
 			return fmt.Errorf("cannot set a Plugin config and Policy config")
 		}
 
 		// use the loaded config file only, with the exception of --address and --port.
+		// 仅使用加载的配置文件，但 --address 和 --port 除外
 		if err := o.CombinedInsecureServing.ApplyToFromLoadedConfig(c, &c.ComponentConfig); err != nil {
 			return err
 		}
@@ -237,6 +246,7 @@ func emptySchedulerProfileConfig(profiles []kubeschedulerconfig.KubeSchedulerPro
 }
 
 // Validate validates all the required options.
+// Validate验证所有必需的选项
 func (o *Options) Validate() []error {
 	var errs []error
 
@@ -259,7 +269,7 @@ func (o *Options) Validate() []error {
 /*
 Config函数主要执行以下操作：
 	构建scheduler client、leaderElectionClient、eventClient。
-	创建event recorder
+	创建event 记录器(recorder)
 	设置leader选举
 	创建informer对象，主要函数有NewSharedInformerFactory和NewPodInformer
 */
@@ -276,14 +286,17 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	}
 
 	// Prepare kube clients.
+	// 准备kube客户端
 	client, leaderElectionClient, eventClient, err := createClients(c.ComponentConfig.ClientConnection, o.Master, c.ComponentConfig.LeaderElection.RenewDeadline.Duration)
 	if err != nil {
 		return nil, err
 	}
 
+	// 创建event 记录器
 	c.EventBroadcaster = events.NewEventBroadcasterAdapter(eventClient)
 
 	// Set up leader election if enabled.
+	// 如果启用，设置leader选举
 	var leaderElectionConfig *leaderelection.LeaderElectionConfig
 	if c.ComponentConfig.LeaderElection.LeaderElect {
 		// Use the scheduler name in the first profile to record leader election.
@@ -295,6 +308,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	}
 
 	c.Client = client
+	// 创建informer对象
 	c.InformerFactory = informers.NewSharedInformerFactory(client, 0)
 	c.PodInformer = scheduler.NewPodInformer(client, 0)
 	c.LeaderElection = leaderElectionConfig
@@ -304,12 +318,14 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 
 // makeLeaderElectionConfig builds a leader election configuration. It will
 // create a new resource lock associated with the configuration.
+// makeLeaderElectionConfig构建一个leader选举配置。它将创建一个与配置关联的新资源锁
 func makeLeaderElectionConfig(config componentbaseconfig.LeaderElectionConfiguration, client clientset.Interface, recorder record.EventRecorder) (*leaderelection.LeaderElectionConfig, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get hostname: %v", err)
 	}
 	// add a uniquifier so that two processes on the same host don't accidentally both become active
+	// 添加一个唯一限定符，这样同一主机上的两个进程就不会意外地同时变成活动的
 	id := hostname + "_" + string(uuid.NewUUID())
 
 	rl, err := resourcelock.New(config.ResourceLock,
@@ -336,6 +352,7 @@ func makeLeaderElectionConfig(config componentbaseconfig.LeaderElectionConfigura
 }
 
 // createClients creates a kube client and an event client from the given config and masterOverride.
+// createClients 从给定的配置和 masterOverride 创建一个 kube 客户端和一个 event 客户端
 // TODO remove masterOverride when CLI flags are removed.
 func createClients(config componentbaseconfig.ClientConnectionConfiguration, masterOverride string, timeout time.Duration) (clientset.Interface, clientset.Interface, clientset.Interface, error) {
 	if len(config.Kubeconfig) == 0 && len(masterOverride) == 0 {
