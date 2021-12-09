@@ -75,6 +75,7 @@ type Options struct {
 }
 
 // NewOptions returns default scheduler app options.
+// NewOptions主要用来构造SchedulerServer使用的参数和上下文，其中核心参数是KubeSchedulerConfiguration
 func NewOptions() (*Options, error) {
 	cfg, err := newDefaultComponentConfig()
 	if err != nil {
@@ -149,6 +150,7 @@ func newDefaultComponentConfig() (*kubeschedulerconfig.KubeSchedulerConfiguratio
 }
 
 // Flags returns flags for a specific scheduler by section name
+// Flags根据节名返回特定调度程序的标志
 func (o *Options) Flags() (nfs cliflag.NamedFlagSets) {
 	fs := nfs.FlagSet("misc")
 	fs.StringVar(&o.ConfigFile, "config", o.ConfigFile, `The path to the configuration file. The following flags can overwrite fields in this file:
@@ -253,6 +255,14 @@ func (o *Options) Validate() []error {
 }
 
 // Config return a scheduler config object
+// 返回调度程序配置对象
+/*
+Config函数主要执行以下操作：
+	构建scheduler client、leaderElectionClient、eventClient。
+	创建event recorder
+	设置leader选举
+	创建informer对象，主要函数有NewSharedInformerFactory和NewPodInformer
+*/
 func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	if o.SecureServing != nil {
 		if err := o.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {

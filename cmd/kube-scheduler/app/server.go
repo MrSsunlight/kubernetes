@@ -62,6 +62,7 @@ type Option func(runtime.Registry) error
 
 // NewSchedulerCommand creates a *cobra.Command object with default parameters and registryOptions
 func NewSchedulerCommand(registryOptions ...Option) *cobra.Command {
+	// 构造option
 	opts, err := options.NewOptions()
 	if err != nil {
 		klog.Fatalf("unable to initialize command options: %v", err)
@@ -92,7 +93,9 @@ for more information about scheduling and the kube-scheduler component.`,
 			return nil
 		},
 	}
+	// 添加参数
 	fs := cmd.Flags()
+	// Flags为SchedulerServer添加指定的参数
 	namedFlagSets := opts.Flags()
 	verflag.AddFlags(namedFlagSets.FlagSet("global"))
 	globalflag.AddGlobalFlags(namedFlagSets.FlagSet("global"), cmd.Name())
@@ -117,6 +120,7 @@ for more information about scheduling and the kube-scheduler component.`,
 }
 
 // runCommand runs the scheduler.
+// 运行调度程序
 func runCommand(cmd *cobra.Command, opts *options.Options, registryOptions ...Option) error {
 	verflag.PrintAndExitIfRequested()
 	cliflag.PrintFlags(cmd.Flags())
@@ -124,6 +128,7 @@ func runCommand(cmd *cobra.Command, opts *options.Options, registryOptions ...Op
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// 基于命令参数和选项创建完整的配置和调度程序
 	cc, sched, err := Setup(ctx, opts, registryOptions...)
 	if err != nil {
 		return err
@@ -141,11 +146,21 @@ func runCommand(cmd *cobra.Command, opts *options.Options, registryOptions ...Op
 }
 
 // Run executes the scheduler based on the given configuration. It only returns on error or when context is done.
+// Run 根据给定的配置执行调度程序。 它仅在错误或上下文完成时返回
+/*
+Run函数的主要内容如下：
+	通过scheduler config来创建scheduler的结构体。
+	运行event broadcaster、healthz server、metrics server。
+	运行所有的informer并在调度前等待cache的同步（重点）。
+	执行sched.Run()来运行scheduler的调度逻辑。
+	如果多个scheduler并开启了LeaderElect，则执行leader选举。
+*/
 func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *scheduler.Scheduler) error {
 	// To help debugging, immediately log version
 	klog.V(1).Infof("Starting Kubernetes Scheduler version %+v", version.Get())
 
 	// Configz registration.
+	// 配置注册
 	if cz, err := configz.New("componentconfig"); err == nil {
 		cz.Set(cc.ComponentConfig)
 	} else {
@@ -153,15 +168,18 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 	}
 
 	// Prepare the event broadcaster.
+	// 准备事件广播器
 	cc.EventBroadcaster.StartRecordingToSink(ctx.Done())
 
 	// Setup healthz checks.
+	// 设置健康检查
 	var checks []healthz.HealthChecker
 	if cc.ComponentConfig.LeaderElection.LeaderElect {
 		checks = append(checks, cc.LeaderElection.WatchDog)
 	}
 
 	// Start up the healthz server.
+	// 启动 healthz 服务器
 	if cc.InsecureServing != nil {
 		separateMetrics := cc.InsecureMetricsServing != nil
 		handler := buildHandlerChain(newHealthzHandler(&cc.ComponentConfig, separateMetrics, checks...), nil, nil)
@@ -185,13 +203,16 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 	}
 
 	// Start all informers.
+	// 运行PodInformer，并运行InformerFactory。此部分的逻辑为client-go的informer机制
 	go cc.PodInformer.Informer().Run(ctx.Done())
 	cc.InformerFactory.Start(ctx.Done())
 
 	// Wait for all caches to sync before scheduling.
+	// 在调度之前等待所有缓存同步
 	cc.InformerFactory.WaitForCacheSync(ctx.Done())
 
 	// If leader election is enabled, runCommand via LeaderElector until done and exit.
+	// 如果启用了leader选举，通过LeaderElector运行命令直到完成并退出
 	if cc.LeaderElection != nil {
 		cc.LeaderElection.Callbacks = leaderelection.LeaderCallbacks{
 			OnStartedLeading: sched.Run,
@@ -210,6 +231,7 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 	}
 
 	// Leader election is disabled, so runCommand inline until done.
+	// 领导者选举被禁用，所以 runCommand 内联直到完成
 	sched.Run(ctx)
 	return fmt.Errorf("finished without leader elect")
 }
@@ -292,17 +314,20 @@ func WithPlugin(name string, factory runtime.PluginFactory) Option {
 }
 
 // Setup creates a completed config and a scheduler based on the command args and options
+// 基于命令参数和选项创建完整的配置和调度程序
 func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions ...Option) (*schedulerserverconfig.CompletedConfig, *scheduler.Scheduler, error) {
 	if errs := opts.Validate(); len(errs) > 0 {
 		return nil, nil, utilerrors.NewAggregate(errs)
 	}
 
+	// Config初始化调度器的配置对象
 	c, err := opts.Config()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Get the completed config
+	// 获取完成的配置
 	cc := c.Complete()
 
 	outOfTreeRegistry := make(runtime.Registry)
@@ -314,6 +339,7 @@ func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions 
 
 	recorderFactory := getRecorderFactory(&cc)
 	// Create the scheduler.
+	// 创建调度程序
 	sched, err := scheduler.New(cc.Client,
 		cc.InformerFactory,
 		cc.PodInformer,
