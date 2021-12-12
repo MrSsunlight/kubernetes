@@ -156,21 +156,27 @@ func newDefaultComponentConfig() (*kubeschedulerconfig.KubeSchedulerConfiguratio
 // Flags returns flags for a specific scheduler by section name
 // Flags根据节名返回特定调度程序的标志
 func (o *Options) Flags() (nfs cliflag.NamedFlagSets) {
+	// 混杂模式
 	fs := nfs.FlagSet("misc")
+	// 下面参数可以被配置文件中的覆盖
 	fs.StringVar(&o.ConfigFile, "config", o.ConfigFile, `The path to the configuration file. The following flags can overwrite fields in this file:
   --algorithm-provider
   --policy-config-file
   --policy-configmap
   --policy-configmap-namespace`)
+	// 如果设置了，将配置值写入该文件并退出
 	fs.StringVar(&o.WriteConfigTo, "write-config-to", o.WriteConfigTo, "If set, write the configuration values to this file and exit.")
+	// Kubernetes API服务器的地址(覆盖kubeconfig中的任何值）
 	fs.StringVar(&o.Master, "master", o.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig)")
 
 	o.SecureServing.AddFlags(nfs.FlagSet("secure serving"))
 	o.CombinedInsecureServing.AddFlags(nfs.FlagSet("insecure serving"))
 	o.Authentication.AddFlags(nfs.FlagSet("authentication"))
 	o.Authorization.AddFlags(nfs.FlagSet("authorization"))
+	// 弃用部分
 	o.Deprecated.AddFlags(nfs.FlagSet("deprecated"), &o.ComponentConfig)
 
+	// 集群leader选举
 	options.BindLeaderElectionFlags(&o.ComponentConfig.LeaderElection, nfs.FlagSet("leader election"))
 	utilfeature.DefaultMutableFeatureGate.AddFlag(nfs.FlagSet("feature gate"))
 	o.Metrics.AddFlags(nfs.FlagSet("metrics"))

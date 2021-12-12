@@ -26,10 +26,13 @@ import (
 )
 
 // NamedFlagSets stores named flag sets in the order of calling FlagSet.
+// NamedFlagSets 按照调用 FlagSet 的顺序存储命名标志集
 type NamedFlagSets struct {
 	// Order is an ordered list of flag set names.
+	// Order 是标志集名称的有序列表
 	Order []string
 	// FlagSets stores the flag sets by name.
+	// FlagSets 按名称存储标志集
 	FlagSets map[string]*pflag.FlagSet
 }
 

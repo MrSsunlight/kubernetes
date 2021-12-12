@@ -36,10 +36,14 @@ func main() {
 	command := app.NewSchedulerCommand()
 
 	// TODO: once we switch everything over to Cobra commands, we can go back to calling
+	// 一旦我们将所有内容切换到 Cobra 命令，我们就可以返回调用
 	// utilflag.InitFlags() (by removing its pflag.Parse() call). For now, we have to set the
 	// normalize func and add the go flag set by hand.
+	// utilflag.InitFlags()（通过删除它的 pflag.Parse() 调用）。 现在，我们必须设置 normalize func 并添加手动设置的 go 标志
 	pflag.CommandLine.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
 	// utilflag.InitFlags()
+
+	// 退出时 强刷新日志
 	logs.InitLogs()
 	defer logs.FlushLogs()
 

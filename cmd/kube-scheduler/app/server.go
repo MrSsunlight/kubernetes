@@ -212,7 +212,7 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 	cc.InformerFactory.WaitForCacheSync(ctx.Done())
 
 	// If leader election is enabled, runCommand via LeaderElector until done and exit.
-	// 如果启用了leader选举，通过LeaderElector运行命令直到完成并退出
+	// 如果有多个scheduler，并开启leader选举，则运行LeaderElector直到选举结束或退出
 	if cc.LeaderElection != nil {
 		cc.LeaderElection.Callbacks = leaderelection.LeaderCallbacks{
 			OnStartedLeading: sched.Run,

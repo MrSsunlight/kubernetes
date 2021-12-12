@@ -58,9 +58,11 @@ const (
 
 // Scheduler watches for new unscheduled pods. It attempts to find
 // nodes that they fit on and writes bindings back to the api server.
+// Scheduler 监视新的未调度的 pod。 它尝试找到它们适合的节点并将绑定写回 api server
 type Scheduler struct {
 	// It is expected that changes made via SchedulerCache will be observed
 	// by NodeLister and Algorithm.
+	// 预计通过SchedulerCache做出的改变将被NodeLister和Algorithm观察到
 	SchedulerCache internalcache.Cache
 
 	Algorithm core.ScheduleAlgorithm
@@ -73,15 +75,18 @@ type Scheduler struct {
 
 	// Error is called if there is an error. It is passed the pod in
 	// question, and the error
+	// 如果有错误，则调用Error。它传递了有问题的pod 和 错误
 	Error func(*framework.QueuedPodInfo, error)
 
 	// Close this to shut down the scheduler.
 	StopEverything <-chan struct{}
 
 	// SchedulingQueue holds pods to be scheduled
+	// SchedulingQueue 保存要调度的 Pod
 	SchedulingQueue internalqueue.SchedulingQueue
 
 	// Profiles are the scheduling profiles.
+	// Profiles 是调度配置文件
 	Profiles profile.Map
 
 	scheduledPodsHasSynced func() bool
@@ -310,6 +315,8 @@ func initPolicyFromConfigMap(client clientset.Interface, policyRef *schedulerapi
 }
 
 // Run begins watching and scheduling. It waits for cache to be synced, then starts scheduling and blocked until the context is done.
+// 开始运行watching和scheduling。它等待缓存被同步，然后开始scheduling，并封锁直到上下文完成;
+// 先等待cache同步，然后开启调度逻辑的goroutine
 func (sched *Scheduler) Run(ctx context.Context) {
 	if !cache.WaitForCacheSync(ctx.Done(), sched.scheduledPodsHasSynced) {
 		return
