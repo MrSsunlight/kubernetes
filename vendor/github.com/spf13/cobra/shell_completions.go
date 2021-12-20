@@ -24,7 +24,6 @@ func MarkFlagRequired(flags *pflag.FlagSet, name string) error {
 
 // MarkFlagFilename adds the BashCompFilenameExt annotation to the named flag, if it exists.
 // Generated bash autocompletion will select filenames for the flag, limiting to named extensions if provided.
-// MarkFlagFilename将BashCompFilenameExt注释添加到命名标志(如果它存在的话)。生成的bash自动完成将为标志选择文件名，如果提供的话，将限制为命名的扩展名
 func (c *Command) MarkFlagFilename(name string, extensions ...string) error {
 	return MarkFlagFilename(c.Flags(), name, extensions...)
 }

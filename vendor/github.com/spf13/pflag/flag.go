@@ -878,7 +878,6 @@ func (f *FlagSet) AddFlag(flag *Flag) {
 
 // AddFlagSet adds one FlagSet to another. If a flag is already present in f
 // the flag from newSet will be ignored.
-// AddFlagSet将一个FlagSet添加到另一个。如果一个标志已经存在于f中newSet的标志将被忽略
 func (f *FlagSet) AddFlagSet(newSet *FlagSet) {
 	if newSet == nil {
 		return
