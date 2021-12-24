@@ -238,6 +238,7 @@ func NewPriorityQueue(
 }
 
 // Run starts the goroutine to pump from podBackoffQ to activeQ
+// Run 启动 goroutine 从 podBackoffQ 注入到 activeQ
 func (p *PriorityQueue) Run() {
 	go wait.Until(p.flushBackoffQCompleted, 1.0*time.Second, p.stop)
 	go wait.Until(p.flushUnschedulableQLeftover, 30*time.Second, p.stop)
@@ -328,6 +329,7 @@ func (p *PriorityQueue) AddUnschedulableIfNotPresent(pInfo *framework.QueuedPodI
 }
 
 // flushBackoffQCompleted Moves all pods from backoffQ which have completed backoff in to activeQ
+// flushBackoffQCompleted 将所有已完成回退的pod从backoffQ移动到activeQ
 func (p *PriorityQueue) flushBackoffQCompleted() {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -352,8 +354,8 @@ func (p *PriorityQueue) flushBackoffQCompleted() {
 	}
 }
 
-// flushUnschedulableQLeftover moves pod which stays in unschedulableQ longer than the unschedulableQTimeInterval
-// to activeQ.
+// flushUnschedulableQLeftover moves pod which stays in unschedulableQ longer than the unschedulableQTimeInterval to activeQ.
+// flushUnschedulableQLeftover 将停留在unschedulableQ的时间长于unschedulableQTimeInterval的pod移动到activeQ
 func (p *PriorityQueue) flushUnschedulableQLeftover() {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -574,6 +576,7 @@ func (p *PriorityQueue) PendingPods() []*v1.Pod {
 }
 
 // Close closes the priority queue.
+// Close 关闭优先队列
 func (p *PriorityQueue) Close() {
 	p.lock.Lock()
 	defer p.lock.Unlock()

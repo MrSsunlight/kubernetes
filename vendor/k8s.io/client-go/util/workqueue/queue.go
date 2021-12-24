@@ -162,6 +162,7 @@ func (q *Type) Get() (item interface{}, shutdown bool) {
 // Done marks item as done processing, and if it has been marked as dirty again
 // while it was being processed, it will be re-added to the queue for
 // re-processing.
+// Done 将 item 标记为done(已完成处理)，如果在处理过程中再次被标记为dirty，则会重新添加到队列中进行重新处理
 func (q *Type) Done(item interface{}) {
 	q.cond.L.Lock()
 	defer q.cond.L.Unlock()

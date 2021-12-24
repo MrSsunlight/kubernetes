@@ -284,8 +284,14 @@ func (sched *Scheduler) Run(ctx context.Context) {
 ```
 
 
-
-
 ### 2. Scheduler的工作过程(pkg)
 
-#### 2.1 
+#### 2.1 `pkg/scheduler/internal/queue/scheduling_queue.go` -> func (p *PriorityQueue) Run()
+
+sched.SchedulingQueue.Run() -> (p *PriorityQueue) Run()
+```go
+func (p *PriorityQueue) Run() {
+	go wait.Until(p.flushBackoffQCompleted, 1.0*time.Second, p.stop)
+	go wait.Until(p.flushUnschedulableQLeftover, 30*time.Second, p.stop)
+}
+```

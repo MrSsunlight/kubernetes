@@ -298,10 +298,12 @@ func startPersistentVolumeBinderController(ctx ControllerContext) (http.Handler,
 		NodeInformer:              ctx.InformerFactory.Core().V1().Nodes(),
 		EnableDynamicProvisioning: ctx.ComponentConfig.PersistentVolumeBinderController.VolumeConfiguration.EnableDynamicProvisioning,
 	}
+	// 创建一个新的PersistentVolume控制器
 	volumeController, volumeControllerErr := persistentvolumecontroller.NewController(params)
 	if volumeControllerErr != nil {
 		return nil, true, fmt.Errorf("failed to construct persistentvolume controller: %v", volumeControllerErr)
 	}
+	// 运行 pvController
 	go volumeController.Run(ctx.Stop)
 	return nil, true, nil
 }

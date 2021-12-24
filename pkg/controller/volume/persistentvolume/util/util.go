@@ -306,6 +306,7 @@ func FindMatchingVolume(
 
 // CheckVolumeModeMismatches is a convenience method that checks volumeMode for PersistentVolume
 // and PersistentVolumeClaims
+// CheckVolumeModeMismatches 是一种方便的方法，用于检查 PersistentVolume 和 PersistentVolumeClaims 的 volumeMode
 func CheckVolumeModeMismatches(pvcSpec *v1.PersistentVolumeClaimSpec, pvSpec *v1.PersistentVolumeSpec) bool {
 	// In HA upgrades, we cannot guarantee that the apiserver is on a version >= controller-manager.
 	// So we default a nil volumeMode to filesystem

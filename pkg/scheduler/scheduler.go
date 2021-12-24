@@ -116,6 +116,7 @@ type Option func(*schedulerOptions)
 
 // WithProfiles sets profiles for Scheduler. By default, there is one profile
 // with the name "default-scheduler".
+// WithProfiles 为调度器设置配置文件。默认情况下，有一个名为“default-scheduler”的配置文件
 func WithProfiles(p ...schedulerapi.KubeSchedulerProfile) Option {
 	return func(o *schedulerOptions) {
 		o.profiles = p
@@ -123,6 +124,7 @@ func WithProfiles(p ...schedulerapi.KubeSchedulerProfile) Option {
 }
 
 // WithAlgorithmSource sets schedulerAlgorithmSource for Scheduler, the default is a source with DefaultProvider.
+// WithAlgorithmSource 设置Scheduler的schedulerAlgorithmSource，默认是一个带有DefaultProvider的源
 func WithAlgorithmSource(source schedulerapi.SchedulerAlgorithmSource) Option {
 	return func(o *schedulerOptions) {
 		o.schedulerAlgorithmSource = source

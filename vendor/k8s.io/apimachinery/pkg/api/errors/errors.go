@@ -477,6 +477,7 @@ func NewGenericServerResponse(code int, verb string, qualifiedResource schema.Gr
 
 // IsNotFound returns true if the specified error was created by NewNotFound.
 // It supports wrapped errors.
+// 如果指定的错误是由NewNotFound创建的，则IsNotFound返回true。 它支持包装错误
 func IsNotFound(err error) bool {
 	return ReasonForError(err) == metav1.StatusReasonNotFound
 }
