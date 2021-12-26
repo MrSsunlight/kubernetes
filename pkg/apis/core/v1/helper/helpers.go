@@ -520,8 +520,10 @@ func GetPersistentVolumeClass(volume *v1.PersistentVolume) string {
 
 // GetPersistentVolumeClaimClass returns StorageClassName. If no storage class was
 // requested, it returns "".
+// GetPersistentVolumeClaimClass 返回StorageClassName。如果没有请求存储类，它将返回""
 func GetPersistentVolumeClaimClass(claim *v1.PersistentVolumeClaim) string {
 	// Use beta annotation first
+	// 首先使用beta注释
 	if class, found := claim.Annotations[v1.BetaStorageClassAnnotation]; found {
 		return class
 	}

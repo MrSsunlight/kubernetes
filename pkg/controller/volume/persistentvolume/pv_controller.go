@@ -301,6 +301,7 @@ func checkVolumeSatisfyClaim(volume *v1.PersistentVolume, claim *v1.PersistentVo
 
 // emitEventForUnboundDelayBindingClaim generates informative event for claim
 // if it's in delay binding mode and not bound yet.
+// 如果它处于延迟绑定模式并且尚未绑定，则emitEventForUnboundDelayBindingClaim 生成用于claim的信息事件
 func (ctrl *PersistentVolumeController) emitEventForUnboundDelayBindingClaim(claim *v1.PersistentVolumeClaim) error {
 	reason := events.WaitForFirstConsumer
 	message := "waiting for first consumer to be created before binding"
@@ -335,26 +336,34 @@ func (ctrl *PersistentVolumeController) syncUnboundClaim(claim *v1.PersistentVol
 	// 如果当前 pvc 的 volumeName 为空
 	if claim.Spec.VolumeName == "" {
 		// User did not care which PV they get.
+		// 用户并不关心他们得到的是哪种PV
+
+		// 判断当前pvc 是否是延迟绑定的
 		delayBinding, err := pvutil.IsDelayBindingMode(claim, ctrl.classLister)
 		if err != nil {
 			return err
 		}
 
 		// [Unit test set 1]
+		// 调用 volume, err := ctrl.volumes.findBestMatchForClaim(claim, delayBinding) 找出对应的 pv
 		volume, err := ctrl.volumes.findBestMatchForClaim(claim, delayBinding)
 		if err != nil {
 			klog.V(2).Infof("synchronizing unbound PersistentVolumeClaim[%s]: Error finding PV for claim: %v", claimToClaimKey(claim), err)
 			return fmt.Errorf("Error finding PV for claim %q: %v", claimToClaimKey(claim), err)
 		}
+		// 如果没有找到 volume 的话
 		if volume == nil {
 			klog.V(4).Infof("synchronizing unbound PersistentVolumeClaim[%s]: no volume found", claimToClaimKey(claim))
 			// No PV could be found
 			// OBSERVATION: pvc is "Pending", will retry
+			// 观察:pvc是“Pending”，将重试
 			switch {
+			// 如果是延迟绑定， 并且还未触发（pod 未引用）则 emit event 到 pvc 上
 			case delayBinding && !pvutil.IsDelayBindingProvisioning(claim):
 				if err = ctrl.emitEventForUnboundDelayBindingClaim(claim); err != nil {
 					return err
 				}
+			// 如果 pvc 绑定了 sc, 调用 ctrl.provisionClaim(ctx, claim) 方法
 			case v1helper.GetPersistentVolumeClaimClass(claim) != "":
 				if err = ctrl.provisionClaim(claim); err != nil {
 					return err
@@ -370,11 +379,12 @@ func (ctrl *PersistentVolumeController) syncUnboundClaim(claim *v1.PersistentVol
 				return err
 			}
 			return nil
-		} else /* pv != nil */ {
+		} else /* pv != nil */ { // 如果找到 volume 的话
 			// Found a PV for this claim
 			// OBSERVATION: pvc is "Pending", pv is "Available"
 			claimKey := claimToClaimKey(claim)
 			klog.V(4).Infof("synchronizing unbound PersistentVolumeClaim[%s]: volume %q found: %s", claimKey, volume.Name, getVolumeStatusForLogging(volume))
+			// 调用 ctrl.bind(volume, claim) 方法进行绑定
 			if err = ctrl.bind(volume, claim); err != nil {
 				// On any error saving the volume or the claim, subsequent
 				// syncClaim will finish the binding.
@@ -1474,35 +1484,44 @@ func (ctrl *PersistentVolumeController) doDeleteVolume(volume *v1.PersistentVolu
 
 // provisionClaim starts new asynchronous operation to provision a claim if
 // provisioning is enabled.
+// provisionClaim 开始新的异步操作，以便在启用provisioning的情况下供应一个claim
 func (ctrl *PersistentVolumeController) provisionClaim(claim *v1.PersistentVolumeClaim) error {
+	// 没有启用动态配置 直接返回
 	if !ctrl.enableDynamicProvisioning {
 		return nil
 	}
 	klog.V(4).Infof("provisionClaim[%s]: started", claimToClaimKey(claim))
 	opName := fmt.Sprintf("provision-%s[%s]", claimToClaimKey(claim), string(claim.UID))
-	plugin, storageClass, err := ctrl.findProvisionablePlugin(claim)
 	// findProvisionablePlugin does not return err for external provisioners
+	// findProvisionablePlugin 不会为外部供应程序返回err
+	// 分析 pvc yaml， 找到 provisioner driver
+	plugin, storageClass, err := ctrl.findProvisionablePlugin(claim)
 	if err != nil {
 		ctrl.eventRecorder.Event(claim, v1.EventTypeWarning, events.ProvisioningFailed, err.Error())
 		klog.Errorf("error finding provisioning plugin for claim %s: %v", claimToClaimKey(claim), err)
 		// failed to find the requested provisioning plugin, directly return err for now.
 		// controller will retry the provisioning in every syncUnboundClaim() call
 		// retain the original behavior of returning nil from provisionClaim call
+		// 找不到请求的配置插件，暂时直接返回err。 控制器将在每个 syncUnboundClaim() 调用中重试配置，保留从 provisionClaim 调用返回 nil 的原始行为
 		return nil
 	}
+	// 启动一个 goroutine
 	ctrl.scheduleOperation(opName, func() error {
 		// create a start timestamp entry in cache for provision operation if no one exists with
 		// key = claimKey, pluginName = provisionerName, operation = "provision"
+		// 如果不存在key = claimKey, pluginName = provisionerName, operation = "provision"，则在缓存中为provision操作创建一个开始时间戳条目
 		claimKey := claimToClaimKey(claim)
 		ctrl.operationTimestamps.AddIfNotExist(claimKey, ctrl.getProvisionerName(plugin, storageClass), "provision")
 		var err error
 		if plugin == nil {
 			_, err = ctrl.provisionClaimOperationExternal(claim, storageClass)
 		} else {
+			// 调用 ctrl.provisionClaimOperation(ctx, claim, plugin, storageClass) 进行创建工作
 			_, err = ctrl.provisionClaimOperation(claim, plugin, storageClass)
 		}
 		// if error happened, record an error count metric
 		// timestamp entry will remain in cache until a success binding has happened
+		// 如果发生错误，记录错误计数度量时间戳条目将保留在缓存中，直到发生成功绑定
 		if err != nil {
 			metrics.RecordMetric(claimKey, &ctrl.operationTimestamps, err)
 		}
@@ -1774,6 +1793,7 @@ func (ctrl *PersistentVolumeController) getProvisionedVolumeNameForClaim(claim *
 
 // scheduleOperation starts given asynchronous operation on given volume. It
 // makes sure the operation is already not running.
+// scheduleOperation 在给定的卷上启动给定的异步操作。它将确保该操作尚未运行
 func (ctrl *PersistentVolumeController) scheduleOperation(operationName string, operation func() error) {
 	klog.V(4).Infof("scheduleOperation[%s]", operationName)
 
@@ -1782,6 +1802,7 @@ func (ctrl *PersistentVolumeController) scheduleOperation(operationName string, 
 		ctrl.preOperationHook(operationName)
 	}
 
+	// 启动一个 goroutine
 	err := ctrl.runningOperations.Run(operationName, operation)
 	if err != nil {
 		switch {
@@ -1806,9 +1827,11 @@ func (ctrl *PersistentVolumeController) newRecyclerEventRecorder(volume *v1.Pers
 // findProvisionablePlugin finds a provisioner plugin for a given claim.
 // It returns either the provisioning plugin or nil when an external
 // provisioner is requested.
+// findProvisionablePlugin 为给定的claim找到一个供应器插件。当请求外部供应时，它返回供应插件或nil。
 func (ctrl *PersistentVolumeController) findProvisionablePlugin(claim *v1.PersistentVolumeClaim) (vol.ProvisionableVolumePlugin, *storage.StorageClass, error) {
 	// provisionClaim() which leads here is never called with claimClass=="", we
 	// can save some checks.
+	// provisionClaim()在这里被调用的时候从来不会出现claimClass==""，可以节省一些检查
 	claimClass := v1helper.GetPersistentVolumeClaimClass(claim)
 	class, err := ctrl.classLister.Get(claimClass)
 	if err != nil {
@@ -1816,6 +1839,7 @@ func (ctrl *PersistentVolumeController) findProvisionablePlugin(claim *v1.Persis
 	}
 
 	// Find a plugin for the class
+	// 为类找到一个插件
 	if ctrl.csiMigratedPluginManager.IsMigrationEnabledForPlugin(class.Provisioner) {
 		// CSI migration scenario - do not depend on in-tree plugin
 		return nil, class, nil
@@ -1824,6 +1848,7 @@ func (ctrl *PersistentVolumeController) findProvisionablePlugin(claim *v1.Persis
 	if err != nil {
 		if !strings.HasPrefix(class.Provisioner, "kubernetes.io/") {
 			// External provisioner is requested, do not report error
+			// 请求外部供应，不报告错误
 			return nil, class, nil
 		}
 		return nil, class, err
