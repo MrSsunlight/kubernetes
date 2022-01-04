@@ -210,9 +210,6 @@ API Server提供了k8s各类资源对象（pod,RC,Service等）的增删改查�
 
 ##### 延申：
 
-
-
-
 ### scheduler(调度器)
 
 #### 主要功能：
@@ -223,6 +220,19 @@ Scheduler是一个跑在其他组件边上的独立程序，对接Apiserver寻�
 调度器基于约束和可用资源为调度队列中每个 Pod 确定其可合法放置的节点。 调度器之后对所有合法的节点进行排序，将 Pod 绑定到一个合适的节点。 在同一个集群中可以使用多个不同的调度器；
 
 Scheduler负责Pod调度。在整个系统中起"承上启下"作用，承上：负责接收Controller Manager创建的新的Pod，为其选择一个合适的Node；启下：Node上的kubelet接管Pod的生命周期。
+
+特殊的 Controller，工作原理与其他控制器无差别。
+
+Scheduler 的特殊职责在于监控当前集群所有未调度的 Pod，并且获取当前集群所有节点的健康状况和资源使用情况，为待调度 Pod 选择最佳计算节点，完成调度。
+
+调度阶段分为：
+  - Predict：过滤不能满足业务需求的节点，如资源不足、端口冲突等。 
+  - Priority：按既定要素将满足调度需求的节点评分，选择最佳节点。 
+  - Bind：将计算节点与 Pod 绑定，完成调度。
+
+流程:
+
+<img src="./img/Scheduler.png" alt="Scheduler" style="zoom:100%;" />
 
 
 #### 使用：
@@ -379,10 +389,15 @@ Scheduler为每个pod寻找一个适合其运行的node，大体分成三步：
 #### 1. controller Manager 
 
 ##### 主要功能：
+
 Controller Manager作为集群内部的管理控制中心，负责集群内的Node、Pod副本、服务端点（Endpoint）、命名空间（Namespace）、服务账号（ServiceAccount）、资源定额（ResourceQuota）的管理，当某个Node意外宕机时，Controller Manager会及时发现并执行自动化修复流程，确保集群始终处于预期的工作状态。
 
 每个Controller通过API Server提供的接口实时监控整个集群的每个资源对象的当前状态，当发生各种故障导致系统状态发生变化时，会尝试将系统状态修复到“期望状态”。
 
+- Controller Manager 是集群的大脑，是确保整个集群动起来的关键；
+- 作用是确保 Kubernetes 遵循声明式系统规范，确保系统的真实状态（Actual State）与用户定义的期望状态（Desired State）一致；
+- Controller Manager 是多个控制器的组合，每个 Controller 事实上都是一个control loop，负责侦听其管控的对象，当对象发生变更时完成配置；
+- Controller 配置失败通常会触发自动重试，整个集群会在控制器不断重试的机制下确保最终一致性（ Eventual Consistency）.
 
 <img src="./img/controller-manager.png" alt="controller" style="zoom:50%;" />
 
@@ -430,6 +445,17 @@ kubelet 是基于 PodSpec 来工作的。每个 PodSpec 是一个描述 Pod 的 
 - HTTP 端点（HTTP endpoint）：利用命令行参数指定 HTTP 端点。 此端点的监视周期默认为 20 秒，也可以使用参数进行配置。
 - HTTP 服务器（HTTP server）：kubelet 还可以侦听 HTTP 并响应简单的 API （目前没有完整规范）来提交新的清单。
 
+Kubernetes 的初始化系统（init system）
+- 从不同源获取 Pod 清单，并按需求启停 Pod 的核心组件： 
+- Pod 清单可从本地文件目录，给定的 HTTPServer 或 Kube-APIServer 等源头获取； 
+- Kubelet 将运行时，网络和存储抽象成了 CRI，CNI，CSI。 
+- 负责汇报当前节点的资源信息和健康状态； 
+- 负责 Pod 的健康检查和状态汇报。
+
+流程:
+
+<img src="./img/Kubelet.png" alt="Kubelet" style="zoom:100%;" />
+
 #### 使用：
 `kubelet [flags]`
 
@@ -454,6 +480,19 @@ kubelet 是基于 PodSpec 来工作的。每个 PodSpec 是一个描述 Pod 的 
 ### kube-proxy
 
 #### 主要功能：
+
+- 监控集群中用户发布的服务，并完成负载均衡配置。
+- 每个节点的 Kube-Proxy 都会配置相同的负载均衡策略，使得整个集群的服务发现建立在分布式负载均衡器之上，服务调用无需经过额外的网络跳转（Network Hop）。
+- 负载均衡配置基于不同插件实现：
+  - userspace。
+  - 操作系统网络协议栈不同的 Hooks 点和插件： 
+    - iptables； 
+    - ipvs。
+
+流程:
+
+<img src="./img/Kube-Proxy.png" alt="Kube-Proxy" style="zoom:100%;" />
+
 
 #### 使用：
 

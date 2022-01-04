@@ -30,7 +30,9 @@ cmd/kube-scheduler
 
 ## 函数流转：
 ### 1. 从main出发，找到了scheduler主框架的入口(cmd -> pkg)
-#### 1.1 `cmd/kube-scheduler/scheduler.go` -> main()
+#### 1.1 main()
+
+> 位置: cmd/kube-scheduler/scheduler.go
 
 - kube-scheduler这个二进制文件在运行的时候是调用了`command.Execute()`函数背后的那个Run，那个Run躲在`command := app.NewSchedulerCommand()`这行代码调用的`NewSchedulerCommand()`方法里，这个方法一定返回了一个`*cobra.Command`类型的对象。
 
@@ -47,7 +49,9 @@ func main() {
 ```
 
 
-#### 1.2 `cmd/kube-scheduler/app/server.go` -> NewSchedulerCommand()
+#### 1.2 NewSchedulerCommand()
+
+> cmd/kube-scheduler/app/server.go
 
 - schduler启动时调用了runCommand(cmd, args, opts)
 
@@ -81,7 +85,9 @@ func NewSchedulerCommand(registryOptions ...Option) *cobra.Command {
 }
 ```
 
-#### 1.3 `cmd/kube-scheduler/app/server.go` -> runCommand()
+#### 1.3 runCommand()
+
+> cmd/kube-scheduler/app/server.go
 
 - 这里是处理配置问题后调用了一个Run()函数，Run()的作用是基于给定的配置启动scheduler，它只会在出错时或者channel stopCh被关闭时才退出
 
@@ -111,7 +117,9 @@ func runCommand(cmd *cobra.Command, opts *options.Options, registryOptions ...Op
 }
 ```
 
-#### 1.4 `cmd/kube-scheduler/app/server.go` -> run()
+#### 1.4 run()
+
+> cmd/kube-scheduler/app/server.go
 
 - 这里最终是要跑sched.Run()这个方法来启动scheduler，sched.Run()方法已经在pkg下，具体位置是`pkg/scheduler/scheduler.go`-> Run(ctx context.Context)，也就是scheduler框架真正运行的逻辑了
 
@@ -164,7 +172,9 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 ```
 
 
-#### 1.5 `k8s.io/client-go/informers/factory.go` -> type SharedInformerFactory interface
+#### 1.5 type SharedInformerFactory interface
+
+> k8s.io/client-go/informers/factory.go
 
 在调度前等待cache同步
 
@@ -203,7 +213,9 @@ func (f *sharedInformerFactory) WaitForCacheSync(stopCh <-chan struct{}) map[ref
 
 调用cache.WaitForCacheSync
 
-#### 1.6 `k8s.io/client-go/tools/cache/shared_informer.go` -> WaitForCacheSync(stopCh <-chan struct{}, cacheSyncs ...InformerSynced) bool
+#### 1.6 WaitForCacheSync(stopCh <-chan struct{}, cacheSyncs ...InformerSynced) bool
+
+> k8s.io/client-go/tools/cache/shared_informer.go
 
 ```go
 func WaitForCacheSync(stopCh <-chan struct{}, cacheSyncs ...InformerSynced) bool {
@@ -227,7 +239,9 @@ func WaitForCacheSync(stopCh <-chan struct{}, cacheSyncs ...InformerSynced) bool
 }
 ```
 
-#### 1.7 `pkg/scheduler/scheduler.go` -> (sched *Scheduler) Run(ctx context.Context) 
+#### 1.7 (sched *Scheduler) Run(ctx context.Context) 
+
+> pkg/scheduler/scheduler.go
 
 Scheduler这个struct和Scheduler的Run()方法
 
@@ -286,7 +300,9 @@ func (sched *Scheduler) Run(ctx context.Context) {
 
 ### 2. Scheduler的工作过程(pkg)
 
-#### 2.1 `pkg/scheduler/internal/queue/scheduling_queue.go` -> func (p *PriorityQueue) Run()
+#### 2.1 func (p *PriorityQueue) Run()
+
+> pkg/scheduler/internal/queue/scheduling_queue.go
 
 sched.SchedulingQueue.Run() -> (p *PriorityQueue) Run()
 ```go
