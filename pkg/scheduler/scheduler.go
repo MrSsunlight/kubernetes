@@ -191,6 +191,7 @@ var defaultSchedulerOptions = schedulerOptions{
 }
 
 // New returns a Scheduler
+// New 返回一个调度器
 func New(client clientset.Interface,
 	informerFactory informers.SharedInformerFactory,
 	podInformer coreinformers.PodInformer,
@@ -241,6 +242,7 @@ func New(client clientset.Interface,
 	switch {
 	case source.Provider != nil:
 		// Create the config from a named algorithm provider.
+		// 从指定的算法提供程序创建配置
 		sc, err := configurator.createFromProvider(*source.Provider)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't create scheduler using provider %q: %v", *source.Provider, err)

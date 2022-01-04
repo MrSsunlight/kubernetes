@@ -51,6 +51,7 @@ const ClusterAutoscalerProvider = "ClusterAutoscalerProvider"
 type Registry map[string]*schedulerapi.Plugins
 
 // NewRegistry returns an algorithm provider registry instance.
+// NewRegistry 返回一个算法提供程序注册表实例
 func NewRegistry() Registry {
 	defaultConfig := getDefaultConfig()
 	applyFeatureGates(defaultConfig)
@@ -170,6 +171,7 @@ func applyFeatureGates(config *schedulerapi.Plugins) {
 	if !utilfeature.DefaultFeatureGate.Enabled(features.DefaultPodTopologySpread) {
 		// When feature is enabled, the default spreading is done by
 		// PodTopologySpread plugin, which is enabled by default.
+		// 当功能被启用时，默认的扩展由 PodTopologySpread 插件完成，该插件默认是启用的
 		klog.Infof("Registering SelectorSpread plugin")
 		s := schedulerapi.Plugin{Name: selectorspread.Name}
 		config.PreScore.Enabled = append(config.PreScore.Enabled, s)
