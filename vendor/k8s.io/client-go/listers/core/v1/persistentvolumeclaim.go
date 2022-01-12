@@ -55,7 +55,6 @@ func (s *persistentVolumeClaimLister) List(selector labels.Selector) (ret []*v1.
 }
 
 // PersistentVolumeClaims returns an object that can list and get PersistentVolumeClaims.
-// PersistentVolumeClaims 返回一个可以列出和获取 PersistentVolumeClaims 的对象
 func (s *persistentVolumeClaimLister) PersistentVolumeClaims(namespace string) PersistentVolumeClaimNamespaceLister {
 	return persistentVolumeClaimNamespaceLister{indexer: s.indexer, namespace: namespace}
 }
