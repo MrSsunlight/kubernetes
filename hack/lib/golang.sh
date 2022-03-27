@@ -12,7 +12,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.
+# limitations under the License.goldflags
 
 # shellcheck disable=SC2034 # Variables sourced in other scripts.
 
@@ -787,7 +787,8 @@ kube::golang::build_binaries() {
     # Disable SC2153 for this, as it will throw a warning that the local
     # variable goldflags will exist, and it suggest changing it to this.
     # shellcheck disable=SC2153
-    goldflags="${GOLDFLAGS=-s -w -buildid=} $(kube::version::ldflags)"
+#    goldflags="${GOLDFLAGS=-s -w -buildid=} $(kube::version::ldflags)"
+    goldflags="${GOLDFLAGS=-buildid=} $(kube::version::ldflags)"
     goasmflags="-trimpath=${KUBE_ROOT}"
     gogcflags="${GOGCFLAGS:-} -trimpath=${KUBE_ROOT}"
 
