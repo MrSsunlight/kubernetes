@@ -100,10 +100,10 @@ func (sched *Scheduler) Cache() internalcache.Cache {
 }
 
 type schedulerOptions struct {
-	schedulerAlgorithmSource schedulerapi.SchedulerAlgorithmSource
-	percentageOfNodesToScore int32
-	podInitialBackoffSeconds int64
-	podMaxBackoffSeconds     int64
+	schedulerAlgorithmSource schedulerapi.SchedulerAlgorithmSource // 调度程序算法的源
+	percentageOfNodesToScore int32                                 // 节点得分的百分比
+	podInitialBackoffSeconds int64                                 // pod 初始后退秒数
+	podMaxBackoffSeconds     int64                                 // pod 最大回退秒数
 	// Contains out-of-tree plugins to be merged with the in-tree registry.
 	frameworkOutOfTreeRegistry frameworkruntime.Registry
 	profiles                   []schedulerapi.KubeSchedulerProfile
@@ -132,6 +132,7 @@ func WithAlgorithmSource(source schedulerapi.SchedulerAlgorithmSource) Option {
 }
 
 // WithPercentageOfNodesToScore sets percentageOfNodesToScore for Scheduler, the default value is 50
+// 为Scheduler设置节点得分百分比，默认值为50
 func WithPercentageOfNodesToScore(percentageOfNodesToScore int32) Option {
 	return func(o *schedulerOptions) {
 		o.percentageOfNodesToScore = percentageOfNodesToScore
@@ -147,6 +148,7 @@ func WithFrameworkOutOfTreeRegistry(registry frameworkruntime.Registry) Option {
 }
 
 // WithPodInitialBackoffSeconds sets podInitialBackoffSeconds for Scheduler, the default value is 1
+// 设置Scheduler的podInitialBackoffSeconds，默认值为1
 func WithPodInitialBackoffSeconds(podInitialBackoffSeconds int64) Option {
 	return func(o *schedulerOptions) {
 		o.podInitialBackoffSeconds = podInitialBackoffSeconds
@@ -154,6 +156,7 @@ func WithPodInitialBackoffSeconds(podInitialBackoffSeconds int64) Option {
 }
 
 // WithPodMaxBackoffSeconds sets podMaxBackoffSeconds for Scheduler, the default value is 10
+// 为 Scheduler 设置 podMaxBackoffSeconds，默认值为10
 func WithPodMaxBackoffSeconds(podMaxBackoffSeconds int64) Option {
 	return func(o *schedulerOptions) {
 		o.podMaxBackoffSeconds = podMaxBackoffSeconds
@@ -161,6 +164,7 @@ func WithPodMaxBackoffSeconds(podMaxBackoffSeconds int64) Option {
 }
 
 // WithExtenders sets extenders for the Scheduler
+// 为Scheduler设置扩展程序
 func WithExtenders(e ...schedulerapi.Extender) Option {
 	return func(o *schedulerOptions) {
 		o.extenders = e
@@ -199,6 +203,7 @@ func New(client clientset.Interface,
 	stopCh <-chan struct{},
 	opts ...Option) (*Scheduler, error) {
 
+	// 如果为空 则赋值默认值
 	stopEverything := stopCh
 	if stopEverything == nil {
 		stopEverything = wait.NeverStop
@@ -238,8 +243,10 @@ func New(client clientset.Interface,
 	metrics.Register()
 
 	var sched *Scheduler
+	// 调度程序算法的源
 	source := options.schedulerAlgorithmSource
 	switch {
+	// 提供者 不为空
 	case source.Provider != nil:
 		// Create the config from a named algorithm provider.
 		// 从指定的算法提供程序创建配置
@@ -248,6 +255,7 @@ func New(client clientset.Interface,
 			return nil, fmt.Errorf("couldn't create scheduler using provider %q: %v", *source.Provider, err)
 		}
 		sched = sc
+	//	 策略不为空
 	case source.Policy != nil:
 		// Create the config from a user specified policy source.
 		policy := &schedulerapi.Policy{}

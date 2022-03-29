@@ -160,6 +160,7 @@ type SharedInformer interface {
 	// HasSynced returns true if the shared informer's store has been
 	// informed by at least one full LIST of the authoritative state
 	// of the informer's object collection.  This is unrelated to "resync".
+	// 如果至少一个完整的 LIST 通知了共享通知者的对象集合的权威状态，则 HasSynced 返回 true。 这与“重新同步”无关
 	HasSynced() bool
 	// LastSyncResourceVersion is the resource version observed when last synced with the underlying
 	// store. The value returned is not synchronized with access to the underlying store and is not

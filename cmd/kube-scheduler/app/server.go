@@ -348,7 +348,7 @@ func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions 
 		}
 	}
 
-	// 获得 Factory 记录器
+	// 获得 Factory 记录器, 将要被废弃
 	recorderFactory := getRecorderFactory(&cc)
 	// Create the scheduler.
 	// 创建调度器
@@ -357,13 +357,13 @@ func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions 
 		cc.PodInformer,
 		recorderFactory,
 		ctx.Done(),
-		scheduler.WithProfiles(cc.ComponentConfig.Profiles...),
-		scheduler.WithAlgorithmSource(cc.ComponentConfig.AlgorithmSource),
-		scheduler.WithPercentageOfNodesToScore(cc.ComponentConfig.PercentageOfNodesToScore),
-		scheduler.WithFrameworkOutOfTreeRegistry(outOfTreeRegistry),
-		scheduler.WithPodMaxBackoffSeconds(cc.ComponentConfig.PodMaxBackoffSeconds),
-		scheduler.WithPodInitialBackoffSeconds(cc.ComponentConfig.PodInitialBackoffSeconds),
-		scheduler.WithExtenders(cc.ComponentConfig.Extenders...),
+		scheduler.WithProfiles(cc.ComponentConfig.Profiles...),                              // 为调度器设置配置文件
+		scheduler.WithAlgorithmSource(cc.ComponentConfig.AlgorithmSource),                   // 设置Scheduler的schedulerAlgorithmSource
+		scheduler.WithPercentageOfNodesToScore(cc.ComponentConfig.PercentageOfNodesToScore), // 设置节点得分百分比
+		scheduler.WithFrameworkOutOfTreeRegistry(outOfTreeRegistry),                         // 为列表外的插件设置注册表。这些插件 将被追加到默认注册表中。
+		scheduler.WithPodMaxBackoffSeconds(cc.ComponentConfig.PodMaxBackoffSeconds),         // 设置 podMaxBackoffSeconds，默认值为10
+		scheduler.WithPodInitialBackoffSeconds(cc.ComponentConfig.PodInitialBackoffSeconds), // 设置 podInitialBackoffSeconds，默认值为1
+		scheduler.WithExtenders(cc.ComponentConfig.Extenders...),                            // 为Scheduler设置扩展程序
 	)
 	if err != nil {
 		return nil, nil, err
