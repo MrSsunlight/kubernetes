@@ -58,6 +58,7 @@ import (
 )
 
 // Option configures a framework.Registry.
+// 配置一个框架.注册表
 type Option func(runtime.Registry) error
 
 // NewSchedulerCommand creates a *cobra.Command object with default parameters and registryOptions
@@ -122,6 +123,7 @@ for more information about scheduling and the kube-scheduler component.`,
 // runCommand runs the scheduler.
 // 运行调度程序
 func runCommand(cmd *cobra.Command, opts *options.Options, registryOptions ...Option) error {
+	// 检测 -version 标识。如果是，则打印版本并退出
 	verflag.PrintAndExitIfRequested()
 	cliflag.PrintFlags(cmd.Flags())
 
@@ -134,6 +136,7 @@ func runCommand(cmd *cobra.Command, opts *options.Options, registryOptions ...Op
 		return err
 	}
 
+	// 如果指定保存配置留存路径（WriteConfigTo）
 	if len(opts.WriteConfigTo) > 0 {
 		if err := options.WriteConfigFile(opts.WriteConfigTo, &cc.ComponentConfig); err != nil {
 			return err
@@ -142,6 +145,7 @@ func runCommand(cmd *cobra.Command, opts *options.Options, registryOptions ...Op
 		return nil
 	}
 
+	// 根据配置 cc 创建、运行调度器 sched
 	return Run(ctx, cc, sched)
 }
 
@@ -220,11 +224,12 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 				klog.Fatalf("leaderelection lost")
 			},
 		}
+		// 根据配置 创建 leader 候选人
 		leaderElector, err := leaderelection.NewLeaderElector(*cc.LeaderElection)
 		if err != nil {
 			return fmt.Errorf("couldn't create leader elector: %v", err)
 		}
-
+		// 开始 leader 选举
 		leaderElector.Run(ctx)
 
 		return fmt.Errorf("lost lease")
@@ -267,6 +272,7 @@ func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
 }
 
 // newMetricsHandler builds a metrics server from the config.
+// 从配置构建一个指标服务器
 func newMetricsHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration) http.Handler {
 	pathRecorderMux := mux.NewPathRecorderMux("kube-scheduler")
 	installMetricHandler(pathRecorderMux)
@@ -283,6 +289,7 @@ func newMetricsHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration) h
 // newHealthzHandler creates a healthz server from the config, and will also
 // embed the metrics handler if the healthz and metrics address configurations
 // are the same.
+// 从配置中创建healthz服务器，如果healthz和metrics地址配置相同，还将嵌入指标处理程序
 func newHealthzHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration, separateMetrics bool, checks ...healthz.HealthChecker) http.Handler {
 	pathRecorderMux := mux.NewPathRecorderMux("kube-scheduler")
 	healthz.InstallHandler(pathRecorderMux, checks...)
@@ -299,6 +306,7 @@ func newHealthzHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration, s
 	return pathRecorderMux
 }
 
+// 获得 Factory 记录器
 func getRecorderFactory(cc *schedulerserverconfig.CompletedConfig) profile.RecorderFactory {
 	return func(name string) events.EventRecorder {
 		return cc.EventBroadcaster.NewRecorder(name)
@@ -307,6 +315,7 @@ func getRecorderFactory(cc *schedulerserverconfig.CompletedConfig) profile.Recor
 
 // WithPlugin creates an Option based on plugin name and factory. Please don't remove this function: it is used to register out-of-tree plugins,
 // hence there are no references to it from the kubernetes scheduler code base.
+// WithPlugin 根据 plugin 的名称和 factory 创建一个 Option。请不要删除这个函数：它被用来注册列表外的插件，因此在kubernetes调度器的代码库中没有对它的引用。
 func WithPlugin(name string, factory runtime.PluginFactory) Option {
 	return func(registry runtime.Registry) error {
 		return registry.Register(name, factory)
@@ -316,6 +325,7 @@ func WithPlugin(name string, factory runtime.PluginFactory) Option {
 // Setup creates a completed config and a scheduler based on the command args and options
 // 基于命令参数和选项创建完整的配置和调度程序
 func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions ...Option) (*schedulerserverconfig.CompletedConfig, *scheduler.Scheduler, error) {
+	// 验证所有必需的选项（安全、认证、授权、日志、指标等）
 	if errs := opts.Validate(); len(errs) > 0 {
 		return nil, nil, utilerrors.NewAggregate(errs)
 	}
@@ -327,9 +337,10 @@ func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions 
 	}
 
 	// Get the completed config
-	// 获取完成的配置
+	// 填写所有未设置的字段, 获得完整配置
 	cc := c.Complete()
 
+	// 外部注册表, 用于扩展加载
 	outOfTreeRegistry := make(runtime.Registry)
 	for _, option := range outOfTreeRegistryOptions {
 		if err := option(outOfTreeRegistry); err != nil {
@@ -337,9 +348,10 @@ func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions 
 		}
 	}
 
+	// 获得 Factory 记录器
 	recorderFactory := getRecorderFactory(&cc)
 	// Create the scheduler.
-	// 创建调度程序
+	// 创建调度器
 	sched, err := scheduler.New(cc.Client,
 		cc.InformerFactory,
 		cc.PodInformer,
