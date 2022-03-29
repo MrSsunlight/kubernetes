@@ -186,7 +186,7 @@ func (o *Options) Flags() (nfs cliflag.NamedFlagSets) {
 }
 
 // ApplyTo applies the scheduler options to the given scheduler app configuration.
-// ApplyTo将调度器选项应用到给定的调度器应用配置中
+// ApplyTo 将调度器选项应用到给定的调度器应用配置中
 func (o *Options) ApplyTo(c *schedulerappconfig.Config) error {
 	if len(o.ConfigFile) == 0 {
 		c.ComponentConfig = o.ComponentConfig
@@ -259,13 +259,13 @@ func (o *Options) Validate() []error {
 	if err := validation.ValidateKubeSchedulerConfiguration(&o.ComponentConfig).ToAggregate(); err != nil {
 		errs = append(errs, err.Errors()...)
 	}
-	errs = append(errs, o.SecureServing.Validate()...)
-	errs = append(errs, o.CombinedInsecureServing.Validate()...)
-	errs = append(errs, o.Authentication.Validate()...)
-	errs = append(errs, o.Authorization.Validate()...)
-	errs = append(errs, o.Deprecated.Validate()...)
-	errs = append(errs, o.Metrics.Validate()...)
-	errs = append(errs, o.Logs.Validate()...)
+	errs = append(errs, o.SecureServing.Validate()...)           // 安全服务
+	errs = append(errs, o.CombinedInsecureServing.Validate()...) // 合并不安全的服务
+	errs = append(errs, o.Authentication.Validate()...)          // 认证
+	errs = append(errs, o.Authorization.Validate()...)           // 授权
+	errs = append(errs, o.Deprecated.Validate()...)              // 已弃用
+	errs = append(errs, o.Metrics.Validate()...)                 // 指标
+	errs = append(errs, o.Logs.Validate()...)                    // 日志
 
 	return errs
 }
@@ -280,33 +280,38 @@ Config函数主要执行以下操作：
 	创建informer对象，主要函数有NewSharedInformerFactory和NewPodInformer
 */
 func (o *Options) Config() (*schedulerappconfig.Config, error) {
+	// 安全检测 不安全就看是否使用默认证书
 	if o.SecureServing != nil {
+		// 检测是否使用使用默认自签名的证书
 		if err := o.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{net.ParseIP("127.0.0.1")}); err != nil {
 			return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
 		}
 	}
 
+	// 将调度器选项应用到给定的调度器应用配置中
 	c := &schedulerappconfig.Config{}
 	if err := o.ApplyTo(c); err != nil {
 		return nil, err
 	}
 
 	// Prepare kube clients.
-	// 准备kube客户端
+	// 准备 kube 客户端
 	client, leaderElectionClient, eventClient, err := createClients(c.ComponentConfig.ClientConnection, o.Master, c.ComponentConfig.LeaderElection.RenewDeadline.Duration)
 	if err != nil {
 		return nil, err
 	}
 
-	// 创建event 记录器
+	// 创建 event 记录器
 	c.EventBroadcaster = events.NewEventBroadcasterAdapter(eventClient)
 
 	// Set up leader election if enabled.
-	// 如果启用，设置leader选举
+	// 如果启用的话，设置 leader 选举
 	var leaderElectionConfig *leaderelection.LeaderElectionConfig
 	if c.ComponentConfig.LeaderElection.LeaderElect {
 		// Use the scheduler name in the first profile to record leader election.
+		// 使用第一个配置文件中的调度器名称来记录领导人选举
 		coreRecorder := c.EventBroadcaster.DeprecatedNewLegacyRecorder(c.ComponentConfig.Profiles[0].SchedulerName)
+		// 构建一个leader选举配置
 		leaderElectionConfig, err = makeLeaderElectionConfig(c.ComponentConfig.LeaderElection, leaderElectionClient, coreRecorder)
 		if err != nil {
 			return nil, err
@@ -314,8 +319,9 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	}
 
 	c.Client = client
-	// 创建informer对象
+	// 创建 informer 对象
 	c.InformerFactory = informers.NewSharedInformerFactory(client, 0)
+	// 创建一个共享索引通知器，只返回非终端pods
 	c.PodInformer = scheduler.NewPodInformer(client, 0)
 	c.LeaderElection = leaderElectionConfig
 
@@ -324,7 +330,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 
 // makeLeaderElectionConfig builds a leader election configuration. It will
 // create a new resource lock associated with the configuration.
-// makeLeaderElectionConfig构建一个leader选举配置。它将创建一个与配置关联的新资源锁
+// makeLeaderElectionConfig 构建一个leader选举配置。它将创建一个与配置关联的新资源锁
 func makeLeaderElectionConfig(config componentbaseconfig.LeaderElectionConfiguration, client clientset.Interface, recorder record.EventRecorder) (*leaderelection.LeaderElectionConfig, error) {
 	hostname, err := os.Hostname()
 	if err != nil {

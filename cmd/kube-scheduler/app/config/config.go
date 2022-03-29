@@ -39,12 +39,12 @@ type Config struct {
 	LoopbackClientConfig *restclient.Config
 
 	// 不安全的服务
-	InsecureServing        *apiserver.DeprecatedInsecureServingInfo // nil will disable serving on an insecure port
+	InsecureServing *apiserver.DeprecatedInsecureServingInfo // nil will disable serving on an insecure port
 	// 不安全的指标服务
 	InsecureMetricsServing *apiserver.DeprecatedInsecureServingInfo // non-nil if metrics should be served independently
-	Authentication         apiserver.AuthenticationInfo // 验证
-	Authorization          apiserver.AuthorizationInfo  // 授权
-	SecureServing          *apiserver.SecureServingInfo // 安全服务
+	Authentication         apiserver.AuthenticationInfo             // 验证
+	Authorization          apiserver.AuthorizationInfo              // 授权
+	SecureServing          *apiserver.SecureServingInfo             // 安全服务
 
 	Client          clientset.Interface
 	InformerFactory informers.SharedInformerFactory
@@ -54,6 +54,7 @@ type Config struct {
 	EventBroadcaster events.EventBroadcasterAdapter
 
 	// LeaderElection is optional.
+	// leader 选举
 	LeaderElection *leaderelection.LeaderElectionConfig
 }
 
