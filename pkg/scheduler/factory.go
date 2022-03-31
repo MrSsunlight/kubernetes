@@ -35,7 +35,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/klog/v2"
+	klog "k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/algorithmprovider"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config/validation"
@@ -113,9 +113,10 @@ func (c *Configurator) buildFramework(p schedulerapi.KubeSchedulerProfile, opts 
 }
 
 // create a scheduler from a set of registered plugins.
+// 从一组已注册的插件中创建一个调度器
 func (c *Configurator) create() (*Scheduler, error) {
-	var extenders []framework.Extender
-	var ignoredExtendedResources []string
+	var extenders []framework.Extender    // 扩展器
+	var ignoredExtendedResources []string // 忽略扩展资源
 	if len(c.extenders) != 0 {
 		var ignorableExtenders []framework.Extender
 		for ii := range c.extenders {
@@ -185,6 +186,7 @@ func (c *Configurator) create() (*Scheduler, error) {
 	)
 	debugger.ListenForSignal(c.StopEverything)
 
+	// 筛选算法
 	algo := core.NewGenericScheduler(
 		c.schedulerCache,
 		c.nodeInfoSnapshot,
@@ -195,13 +197,13 @@ func (c *Configurator) create() (*Scheduler, error) {
 	)
 
 	return &Scheduler{
-		SchedulerCache:  c.schedulerCache,
-		Algorithm:       algo,
-		Profiles:        profiles,
+		SchedulerCache:  c.schedulerCache, // 调度器 缓冲区
+		Algorithm:       algo,             // 算法
+		Profiles:        profiles,         // 配置文件
 		NextPod:         internalqueue.MakeNextPodFunc(podQueue),
 		Error:           MakeDefaultErrorFunc(c.client, c.informerFactory.Core().V1().Pods().Lister(), podQueue, c.schedulerCache),
 		StopEverything:  c.StopEverything,
-		SchedulingQueue: podQueue,
+		SchedulingQueue: podQueue, // 待调度的队列
 	}, nil
 }
 

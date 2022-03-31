@@ -214,6 +214,7 @@ func New(client clientset.Interface,
 		opt(&options)
 	}
 
+	// 内部缓存
 	schedulerCache := internalcache.New(30*time.Second, stopEverything)
 
 	registry := frameworkplugins.NewInTreeRegistry()
@@ -225,18 +226,18 @@ func New(client clientset.Interface,
 
 	configurator := &Configurator{
 		client:                   client,
-		recorderFactory:          recorderFactory,
-		informerFactory:          informerFactory,
+		recorderFactory:          recorderFactory, // 记录器
+		informerFactory:          informerFactory, // 通知器
 		podInformer:              podInformer,
 		schedulerCache:           schedulerCache,
 		StopEverything:           stopEverything,
-		percentageOfNodesToScore: options.percentageOfNodesToScore,
+		percentageOfNodesToScore: options.percentageOfNodesToScore, // 节点得分的百分比
 		podInitialBackoffSeconds: options.podInitialBackoffSeconds,
 		podMaxBackoffSeconds:     options.podMaxBackoffSeconds,
-		profiles:                 append([]schedulerapi.KubeSchedulerProfile(nil), options.profiles...),
+		profiles:                 append([]schedulerapi.KubeSchedulerProfile(nil), options.profiles...), // 配置文件
 		registry:                 registry,
 		nodeInfoSnapshot:         snapshot,
-		extenders:                options.extenders,
+		extenders:                options.extenders, // 扩展
 		frameworkCapturer:        options.frameworkCapturer,
 	}
 
@@ -258,6 +259,7 @@ func New(client clientset.Interface,
 	//	 策略不为空
 	case source.Policy != nil:
 		// Create the config from a user specified policy source.
+		// 从用户指定的策略源创建配置
 		policy := &schedulerapi.Policy{}
 		switch {
 		case source.Policy.File != nil:
@@ -272,6 +274,8 @@ func New(client clientset.Interface,
 		// Set extenders on the configurator now that we've decoded the policy
 		// In this case, c.extenders should be nil since we're using a policy (and therefore not componentconfig,
 		// which would have set extenders in the above instantiation of Configurator from CC options)
+		// 既然我们已经解码了策略，就在配置器上设置扩展器。在这种情况下，c.extenders 应该是 nil，
+		// 因为我们使用的是策略（因此不是 componentconfig，它会在上面的 CC 选项的 Configurator 实例化中设置扩展器 )
 		configurator.extenders = policy.Extenders
 		sc, err := configurator.createFromConfig(*policy)
 		if err != nil {
@@ -282,10 +286,12 @@ func New(client clientset.Interface,
 		return nil, fmt.Errorf("unsupported algorithm source: %v", source)
 	}
 	// Additional tweaks to the config produced by the configurator.
+	// 对配置器产生的配置进行额外调整
 	sched.StopEverything = stopEverything
 	sched.client = client
-	sched.scheduledPodsHasSynced = podInformer.Informer().HasSynced
+	sched.scheduledPodsHasSynced = podInformer.Informer().HasSynced // 同步调度的 pod
 
+	// 添加处理程序
 	addAllEventHandlers(sched, informerFactory, podInformer)
 	return sched, nil
 }
@@ -462,6 +468,7 @@ func (sched *Scheduler) finishBinding(prof *profile.Profile, assumed *v1.Pod, ta
 }
 
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
+// scheduleOne 为单个 pod 执行整个调度工作流程。它被序列化在调度算法的适合的主机上
 func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	podInfo := sched.NextPod()
 	// pod could be nil when schedulerQueue is closed

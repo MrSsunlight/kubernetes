@@ -64,6 +64,7 @@ const (
 // SchedulingQueue is an interface for a queue to store pods waiting to be scheduled.
 // The interface follows a pattern similar to cache.FIFO and cache.Heap and
 // makes it easy to use those data structures as a SchedulingQueue.
+// SchedulingQueue 是一个队列接口，用于存储等待被调度的pod。该接口遵循类似于cache.FIFO和cache.Heap的模式，并且可以轻松地将这些数据结构用作 SchedulingQueue。
 type SchedulingQueue interface {
 	framework.PodNominator
 	Add(pod *v1.Pod) error
@@ -806,10 +807,11 @@ func NewPodNominator() framework.PodNominator {
 	}
 }
 
-// MakeNextPodFunc returns a function to retrieve the next pod from a given
-// scheduling queue
+// MakeNextPodFunc returns a function to retrieve the next pod from a given scheduling queue
+// MakeNextPodFunc 返回一个从给定调度队列中检索下一个 pod 的函数
 func MakeNextPodFunc(queue SchedulingQueue) func() *framework.QueuedPodInfo {
 	return func() *framework.QueuedPodInfo {
+		// 出栈 获取下一个 pod 信息
 		podInfo, err := queue.Pop()
 		if err == nil {
 			klog.V(4).Infof("About to try and schedule pod %v/%v", podInfo.Pod.Namespace, podInfo.Pod.Name)

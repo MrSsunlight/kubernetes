@@ -42,7 +42,7 @@ type Config struct {
 	InsecureServing *apiserver.DeprecatedInsecureServingInfo // nil will disable serving on an insecure port
 	// 不安全的指标服务
 	InsecureMetricsServing *apiserver.DeprecatedInsecureServingInfo // non-nil if metrics should be served independently
-	Authentication         apiserver.AuthenticationInfo             // 验证
+	Authentication         apiserver.AuthenticationInfo             // 验证 -> vendor/k8s.io/apiserver/pkg/server/config.go:287 NewConfig() ->DefaultBuildHandlerChain() -> WithAuthentication()
 	Authorization          apiserver.AuthorizationInfo              // 授权
 	SecureServing          *apiserver.SecureServingInfo             // 安全服务
 
