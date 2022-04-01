@@ -53,9 +53,12 @@ type Registry map[string]*schedulerapi.Plugins
 // NewRegistry returns an algorithm provider registry instance.
 // NewRegistry 返回一个算法提供程序注册表实例
 func NewRegistry() Registry {
+	// 获取默认插件列表
 	defaultConfig := getDefaultConfig()
+	// 计算插件优先级、 权重
 	applyFeatureGates(defaultConfig)
 
+	// 获取集群自动缩放器配置
 	caConfig := getClusterAutoscalerConfig()
 	applyFeatureGates(caConfig)
 
@@ -66,6 +69,7 @@ func NewRegistry() Registry {
 }
 
 // ListAlgorithmProviders lists registered algorithm providers.
+// 列出注册的算法提供者名单
 func ListAlgorithmProviders() string {
 	r := NewRegistry()
 	var providers []string
@@ -156,6 +160,7 @@ func getDefaultConfig() *schedulerapi.Plugins {
 	}
 }
 
+// 获取集群自动缩放器配置
 func getClusterAutoscalerConfig() *schedulerapi.Plugins {
 	caConfig := getDefaultConfig()
 	// Replace least with most requested.
@@ -167,12 +172,13 @@ func getClusterAutoscalerConfig() *schedulerapi.Plugins {
 	return caConfig
 }
 
+// 计算插件优先级 以及权重
 func applyFeatureGates(config *schedulerapi.Plugins) {
 	if !utilfeature.DefaultFeatureGate.Enabled(features.DefaultPodTopologySpread) {
 		// When feature is enabled, the default spreading is done by
 		// PodTopologySpread plugin, which is enabled by default.
 		// 当功能被启用时，默认的扩展由 PodTopologySpread 插件完成，该插件默认是启用的
-		klog.Infof("Registering SelectorSpread plugin")
+		klog.Infof("Registering SelectorSpread plugin %s", selectorspread.Name)
 		s := schedulerapi.Plugin{Name: selectorspread.Name}
 		config.PreScore.Enabled = append(config.PreScore.Enabled, s)
 		s.Weight = 1

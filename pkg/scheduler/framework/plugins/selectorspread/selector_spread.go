@@ -31,6 +31,7 @@ import (
 )
 
 // SelectorSpread is a plugin that calculates selector spread priority.
+// 是一个计算选择器传播优先级的插件
 type SelectorSpread struct {
 	sharedLister           framework.SharedLister
 	services               corelisters.ServiceLister
@@ -44,11 +45,14 @@ var _ framework.ScorePlugin = &SelectorSpread{}
 
 const (
 	// Name is the name of the plugin used in the plugin registry and configurations.
+	// 在插件注册表和配置中使用的插件的名称
 	Name = "SelectorSpread"
 	// preScoreStateKey is the key in CycleState to SelectorSpread pre-computed data for Scoring.
+	// 是 CycleState 中对 SelectorSpread 预先计算的数据进行评分的关键
 	preScoreStateKey = "PreScore" + Name
 
 	// When zone information is present, give 2/3 of the weighting to zone spreading, 1/3 to node spreading
+	// 当存在区域信息时，将 2/3 的权重分配给区域扩展，将 1/3 的权重分配给节点扩展
 	// TODO: Any way to justify this weighting?
 	zoneWeighting float64 = 2.0 / 3.0
 )

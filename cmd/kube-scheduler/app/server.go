@@ -125,6 +125,7 @@ for more information about scheduling and the kube-scheduler component.`,
 func runCommand(cmd *cobra.Command, opts *options.Options, registryOptions ...Option) error {
 	// 检测 -version 标识。如果是，则打印版本并退出
 	verflag.PrintAndExitIfRequested()
+	// 输出打印 传入的 flag 集合
 	cliflag.PrintFlags(cmd.Flags())
 
 	ctx, cancel := context.WithCancel(context.Background())

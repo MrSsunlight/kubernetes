@@ -159,6 +159,7 @@ func (c *Configurator) create() (*Scheduler, error) {
 	}
 
 	// The nominator will be passed all the way to framework instantiation.
+	// 提名者将被一直传递到框架实例化中
 	nominator := internalqueue.NewPodNominator()
 	profiles, err := profile.NewMap(c.profiles, c.buildFramework, c.recorderFactory,
 		frameworkruntime.WithPodNominator(nominator))
@@ -178,6 +179,7 @@ func (c *Configurator) create() (*Scheduler, error) {
 	)
 
 	// Setup cache debugger.
+	// 设置缓存调试器
 	debugger := cachedebugger.New(
 		c.informerFactory.Core().V1().Nodes().Lister(),
 		c.podInformer.Lister(),
@@ -208,6 +210,7 @@ func (c *Configurator) create() (*Scheduler, error) {
 }
 
 // createFromProvider creates a scheduler from the name of a registered algorithm provider.
+// createFromProvider 根据注册的算法提供者的名字创建一个调度器
 func (c *Configurator) createFromProvider(providerName string) (*Scheduler, error) {
 	klog.V(2).Infof("Creating scheduler from algorithm provider '%v'", providerName)
 	r := algorithmprovider.NewRegistry()

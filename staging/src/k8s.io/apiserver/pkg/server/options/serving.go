@@ -282,6 +282,7 @@ func (s *SecureServingOptions) ApplyTo(config **server.SecureServingInfo) error 
 	return nil
 }
 
+// 也许是默认的自签名证书
 func (s *SecureServingOptions) MaybeDefaultWithSelfSignedCerts(publicAddress string, alternateDNS []string, alternateIPs []net.IP) error {
 	if s == nil || (s.BindPort == 0 && s.Listener == nil) {
 		return nil
