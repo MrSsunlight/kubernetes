@@ -284,6 +284,7 @@ type AuthorizationInfo struct {
 }
 
 // NewConfig returns a Config struct with the default values
+// 返回一个带有默认值的Config结构
 func NewConfig(codecs serializer.CodecFactory) *Config {
 	defaultHealthChecks := []healthz.HealthChecker{healthz.PingHealthz, healthz.LogHealthz}
 	return &Config{

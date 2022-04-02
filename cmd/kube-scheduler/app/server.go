@@ -188,12 +188,14 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 	if cc.InsecureServing != nil {
 		separateMetrics := cc.InsecureMetricsServing != nil
 		handler := buildHandlerChain(newHealthzHandler(&cc.ComponentConfig, separateMetrics, checks...), nil, nil)
+		// 启动一个不安全的 http 服务器
 		if err := cc.InsecureServing.Serve(handler, 0, ctx.Done()); err != nil {
 			return fmt.Errorf("failed to start healthz server: %v", err)
 		}
 	}
 	if cc.InsecureMetricsServing != nil {
 		handler := buildHandlerChain(newMetricsHandler(&cc.ComponentConfig), nil, nil)
+		// 启动一个不安全的 http 服务器
 		if err := cc.InsecureMetricsServing.Serve(handler, 0, ctx.Done()); err != nil {
 			return fmt.Errorf("failed to start metrics server: %v", err)
 		}
@@ -243,6 +245,7 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 }
 
 // buildHandlerChain wraps the given handler with the standard filters.
+// 用标准过滤器包装给定的处理程序
 func buildHandlerChain(handler http.Handler, authn authenticator.Request, authz authorizer.Authorizer) http.Handler {
 	requestInfoResolver := &apirequest.RequestInfoFactory{}
 	failedHandler := genericapifilters.Unauthorized(legacyscheme.Codecs)
@@ -293,6 +296,7 @@ func newMetricsHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration) h
 // 从配置中创建healthz服务器，如果healthz和metrics地址配置相同，还将嵌入指标处理程序
 func newHealthzHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration, separateMetrics bool, checks ...healthz.HealthChecker) http.Handler {
 	pathRecorderMux := mux.NewPathRecorderMux("kube-scheduler")
+	// 注册用于健康检查的处理程序
 	healthz.InstallHandler(pathRecorderMux, checks...)
 	if !separateMetrics {
 		installMetricHandler(pathRecorderMux)
