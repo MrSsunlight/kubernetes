@@ -414,6 +414,7 @@ func maskValue(key string, value string) string {
 	return value
 }
 
+// 请求响应链路
 func (rt *debuggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	reqInfo := newRequestInfo(req)
 

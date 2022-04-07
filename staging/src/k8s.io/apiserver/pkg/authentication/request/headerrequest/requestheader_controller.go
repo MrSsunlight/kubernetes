@@ -162,6 +162,7 @@ func (c *RequestHeaderAuthRequestController) AllowedClientNames() []string {
 }
 
 // Run starts RequestHeaderAuthRequestController controller and blocks until stopCh is closed.
+// 启动 RequestHeaderAuthRequestController 控制器，并阻断直到stopCh被关闭
 func (c *RequestHeaderAuthRequestController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
@@ -219,6 +220,7 @@ func (c *RequestHeaderAuthRequestController) processNextWorkItem() bool {
 	}
 
 	utilruntime.HandleError(fmt.Errorf("%v failed with : %v", dsKey, err))
+	172
 	c.queue.AddRateLimited(dsKey)
 
 	return true

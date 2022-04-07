@@ -363,6 +363,7 @@ func (rules *ClientConfigLoadingRules) IsDefaultConfig(config *restclient.Config
 }
 
 // LoadFromFile takes a filename and deserializes the contents into Config object
+// 获取文件名并将内容反序列化为 Config 对象
 func LoadFromFile(filename string) (*clientcmdapi.Config, error) {
 	kubeconfigBytes, err := ioutil.ReadFile(filename)
 	if err != nil {

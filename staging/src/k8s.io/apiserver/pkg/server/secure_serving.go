@@ -101,6 +101,7 @@ func (s *SecureServingInfo) tlsConfig(stopCh <-chan struct{}) (*tls.Config, erro
 				klog.Warningf("Initial population of client CA failed: %v", err)
 			}
 
+			klog.Infof(" --- s.ClientCA Run ---")
 			go controller.Run(1, stopCh)
 		}
 		if controller, ok := s.Cert.(dynamiccertificates.ControllerRunner); ok {
@@ -110,6 +111,7 @@ func (s *SecureServingInfo) tlsConfig(stopCh <-chan struct{}) (*tls.Config, erro
 				klog.Warningf("Initial population of default serving certificate failed: %v", err)
 			}
 
+			klog.Infof(" --- s.Cert Run ---")
 			go controller.Run(1, stopCh)
 		}
 		for _, sniCert := range s.SNICerts {
@@ -123,7 +125,7 @@ func (s *SecureServingInfo) tlsConfig(stopCh <-chan struct{}) (*tls.Config, erro
 				if err := controller.RunOnce(); err != nil {
 					klog.Warningf("Initial population of SNI serving certificate failed: %v", err)
 				}
-
+				klog.Infof(" --- sniCert Run ---")
 				go controller.Run(1, stopCh)
 			}
 		}
@@ -133,6 +135,7 @@ func (s *SecureServingInfo) tlsConfig(stopCh <-chan struct{}) (*tls.Config, erro
 		if err := dynamicCertificateController.RunOnce(); err != nil {
 			klog.Warningf("Initial population of dynamic certificates failed: %v", err)
 		}
+		klog.Infof(" --- dynamicCertificateController Run ---")
 		go dynamicCertificateController.Run(1, stopCh)
 
 		tlsConfig.GetConfigForClient = dynamicCertificateController.GetConfigForClient

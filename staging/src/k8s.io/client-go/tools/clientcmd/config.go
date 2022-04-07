@@ -479,6 +479,7 @@ func writePreferences(configAccess ConfigAccess, newPrefs clientcmdapi.Preferenc
 }
 
 // getConfigFromFile tries to read a kubeconfig file and if it can't, returns an error.  One exception, missing files result in empty configs, not an error.
+// 试图读取一个 kubeconfig 文件，如果不能，则返回一个错误。 有一个例外，缺失的文件会导致空的配置，而不是一个错误
 func getConfigFromFile(filename string) (*clientcmdapi.Config, error) {
 	config, err := LoadFromFile(filename)
 	if err != nil && !os.IsNotExist(err) {
@@ -491,6 +492,7 @@ func getConfigFromFile(filename string) (*clientcmdapi.Config, error) {
 }
 
 // GetConfigFromFileOrDie tries to read a kubeconfig file and if it can't, it calls exit.  One exception, missing files result in empty configs, not an exit
+// 试图读取一个 kubeconfig 文件，如果不能，就调用退出。 有一个例外，文件丢失会导致空的配置，而不是退出
 func GetConfigFromFileOrDie(filename string) *clientcmdapi.Config {
 	config, err := getConfigFromFile(filename)
 	if err != nil {
