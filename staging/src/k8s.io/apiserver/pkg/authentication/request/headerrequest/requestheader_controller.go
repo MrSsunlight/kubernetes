@@ -220,7 +220,6 @@ func (c *RequestHeaderAuthRequestController) processNextWorkItem() bool {
 	}
 
 	utilruntime.HandleError(fmt.Errorf("%v failed with : %v", dsKey, err))
-	172
 	c.queue.AddRateLimited(dsKey)
 
 	return true
