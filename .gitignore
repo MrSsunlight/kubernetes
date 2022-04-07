@@ -140,6 +140,5 @@ Makefile
 Makefile.generated_files
 WORKSPACE
 
-vendor
 
 test
