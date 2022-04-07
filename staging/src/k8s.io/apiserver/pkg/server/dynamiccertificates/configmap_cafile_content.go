@@ -195,6 +195,7 @@ func (c *ConfigMapCAController) RunOnce() error {
 }
 
 // Run starts the kube-apiserver and blocks until stopCh is closed.
+// 启动 kube-apiserver 并阻塞直到 stopCh 关闭
 func (c *ConfigMapCAController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()

@@ -125,6 +125,7 @@ func NewSharedInformerFactoryWithOptions(client kubernetes.Interface, defaultRes
 }
 
 // Start initializes all requested informers.
+// 初始化所有请求的 informer
 func (f *sharedInformerFactory) Start(stopCh <-chan struct{}) {
 	f.lock.Lock()
 	defer f.lock.Unlock()

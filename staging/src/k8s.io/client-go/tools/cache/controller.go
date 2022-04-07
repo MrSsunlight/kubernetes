@@ -121,6 +121,7 @@ func New(c *Config) Controller {
 // Run begins processing items, and will continue until a value is sent down stopCh or it is closed.
 // It's an error to call Run more than once.
 // Run blocks; call via go.
+// 开始处理项目，并将一直持续到值被发送到 stopCh 或它被关闭。 多次调用 Run 是错误的
 func (c *controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	go func() {

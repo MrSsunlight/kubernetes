@@ -98,6 +98,7 @@ func (c unionCAContent) RunOnce() error {
 }
 
 // Run runs the controller
+// 运行控制器
 func (c unionCAContent) Run(workers int, stopCh <-chan struct{}) {
 	for _, curr := range c {
 		if controller, ok := curr.(ControllerRunner); ok {

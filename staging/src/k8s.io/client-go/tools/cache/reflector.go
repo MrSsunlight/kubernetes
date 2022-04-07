@@ -203,6 +203,7 @@ var internalPackages = []string{"client-go/tools/cache/"}
 // Run repeatedly uses the reflector's ListAndWatch to fetch all the
 // objects and subsequent deltas.
 // Run will exit when stopCh is closed.
+// 重复使用反射器的 ListAndWatch 来获取所有对象和后续增量。 当 stopCh 关闭时运行将退出
 func (r *Reflector) Run(stopCh <-chan struct{}) {
 	klog.V(2).Infof("Starting reflector %s (%s) from %s", r.expectedTypeName, r.resyncPeriod, r.name)
 	wait.BackoffUntil(func() {
