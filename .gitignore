@@ -1,3 +1,15 @@
+# 软连接
+BUILD.bazel
+CHANGELOG.md
+Makefile
+Makefile.generated_files
+WORKSPACE
+
+vendor/k8s.io
+#/vendor/k8s.io/*
+test
+
+
 # OSX leaves these everywhere on SMB shares
 ._*
 
@@ -133,12 +145,4 @@ zz_generated_*_test.go
 vendordiff.patch
 
 
-# 软连接
-BUILD.bazel
-CHANGELOG.md
-Makefile
-Makefile.generated_files
-WORKSPACE
 
-
-test

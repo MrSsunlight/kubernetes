@@ -31,11 +31,11 @@ import (
 // 配置具有运行一个调度程序的所有环境
 type Config struct {
 	// ComponentConfig is the scheduler server's configuration object.
-	// ComponentConfig是调度器服务器的配置对象
+	// 调度器服务器的配置对象
 	ComponentConfig kubeschedulerconfig.KubeSchedulerConfiguration
 
 	// LoopbackClientConfig is a config for a privileged loopback connection
-	// LoopbackClientConfig 是一个特权loopback连接的配置
+	// 一个特权loopback连接的配置
 	LoopbackClientConfig *restclient.Config
 
 	// 不安全的服务
@@ -64,7 +64,7 @@ type completedConfig struct {
 }
 
 // CompletedConfig same as Config, just to swap private object.
-// CompletedConfig 与Config相同，只是交换了私有对象
+// 与Config相同，只是交换了私有对象
 type CompletedConfig struct {
 	// Embed a private pointer that cannot be instantiated outside of this package.
 	// 嵌入一个不能在此包之外实例化的私有指针

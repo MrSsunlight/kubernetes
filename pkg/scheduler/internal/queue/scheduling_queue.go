@@ -89,7 +89,9 @@ type SchedulingQueue interface {
 	// waiting to pop items can exit gracefully.
 	Close()
 	// NumUnschedulablePods returns the number of unschedulable pods exist in the SchedulingQueue.
+	// 返回 SchedulingQueue 中存在的不可调度 pod 的数量
 	NumUnschedulablePods() int
+	// 启动管理队列的 goroutine
 	// Run starts the goroutines managing the queue.
 	Run()
 }
@@ -193,6 +195,7 @@ var defaultPriorityQueueOptions = priorityQueueOptions{
 }
 
 // Making sure that PriorityQueue implements SchedulingQueue.
+// 确保 PriorityQueue 实现了 SchedulingQueue
 var _ SchedulingQueue = &PriorityQueue{}
 
 // newQueuedPodInfoNoTimestamp builds a QueuedPodInfo object without timestamp.

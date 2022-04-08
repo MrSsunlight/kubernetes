@@ -25,9 +25,11 @@ import (
 
 // Get returns the overall codebase version. It's for detecting
 // what code a binary was built from.
+// 返回整个代码库的版本。它是用来检测 一个二进制文件是由什么代码构建的
 func Get() apimachineryversion.Info {
 	// These variables typically come from -ldflags settings and in
 	// their absence fallback to the settings in ./base.go
+	// 这些变量通常来自 -ldflags 设置，如果没有它们，则回退到 ./base.go 中的设置
 	return apimachineryversion.Info{
 		Major:        gitMajor,
 		Minor:        gitMinor,

@@ -141,6 +141,7 @@ func WithPercentageOfNodesToScore(percentageOfNodesToScore int32) Option {
 
 // WithFrameworkOutOfTreeRegistry sets the registry for out-of-tree plugins. Those plugins
 // will be appended to the default registry.
+// 为列表外的插件设置注册表。这些插件将被附加到默认的注册表上
 func WithFrameworkOutOfTreeRegistry(registry frameworkruntime.Registry) Option {
 	return func(o *schedulerOptions) {
 		o.frameworkOutOfTreeRegistry = registry
@@ -172,9 +173,11 @@ func WithExtenders(e ...schedulerapi.Extender) Option {
 }
 
 // FrameworkCapturer is used for registering a notify function in building framework.
+// 是用来在建筑框架(build framework)中注册一个通知函数
 type FrameworkCapturer func(schedulerapi.KubeSchedulerProfile)
 
 // WithBuildFrameworkCapturer sets a notify function for getting buildFramework details.
+// 设置一个通知函数来获取 buildFramework 的详细信息
 func WithBuildFrameworkCapturer(fc FrameworkCapturer) Option {
 	return func(o *schedulerOptions) {
 		o.frameworkCapturer = fc
@@ -210,18 +213,21 @@ func New(client clientset.Interface,
 	}
 
 	options := defaultSchedulerOptions
+	// 执行 opts 中的 WithProfiles、WithPercentageOfNodesToScore ...等函数项
 	for _, opt := range opts {
 		opt(&options)
 	}
 
-	// 内部缓存
+	// 创建调度器缓存过期处理函数
 	schedulerCache := internalcache.New(30*time.Second, stopEverything)
 
+	// 建立注册表
 	registry := frameworkplugins.NewInTreeRegistry()
 	if err := registry.Merge(options.frameworkOutOfTreeRegistry); err != nil {
 		return nil, err
 	}
 
+	// 初始化快照数据结构
 	snapshot := internalcache.NewEmptySnapshot()
 
 	configurator := &Configurator{
@@ -229,18 +235,19 @@ func New(client clientset.Interface,
 		recorderFactory:          recorderFactory, // 记录器
 		informerFactory:          informerFactory, // 通知器
 		podInformer:              podInformer,
-		schedulerCache:           schedulerCache,
-		StopEverything:           stopEverything,
+		schedulerCache:           schedulerCache,                   // 调度器缓存处理函数
+		StopEverything:           stopEverything,                   // 调度器结束控制 chan
 		percentageOfNodesToScore: options.percentageOfNodesToScore, // 节点得分的百分比
 		podInitialBackoffSeconds: options.podInitialBackoffSeconds,
 		podMaxBackoffSeconds:     options.podMaxBackoffSeconds,
 		profiles:                 append([]schedulerapi.KubeSchedulerProfile(nil), options.profiles...), // 配置文件
-		registry:                 registry,
-		nodeInfoSnapshot:         snapshot,
-		extenders:                options.extenders, // 扩展
-		frameworkCapturer:        options.frameworkCapturer,
+		registry:                 registry,                                                              // 插件注册表
+		nodeInfoSnapshot:         snapshot,                                                              // 快照
+		extenders:                options.extenders,                                                     // 扩展
+		frameworkCapturer:        options.frameworkCapturer,                                             // framework 捕获器
 	}
 
+	// 注册所有指标
 	metrics.Register()
 
 	var sched *Scheduler
@@ -256,7 +263,7 @@ func New(client clientset.Interface,
 			return nil, fmt.Errorf("couldn't create scheduler using provider %q: %v", *source.Provider, err)
 		}
 		sched = sc
-	//	 策略不为空
+	// 策略不为空
 	case source.Policy != nil:
 		// Create the config from a user specified policy source.
 		// 从用户指定的策略源创建配置
@@ -289,14 +296,16 @@ func New(client clientset.Interface,
 	// 对配置器产生的配置进行额外调整
 	sched.StopEverything = stopEverything
 	sched.client = client
-	sched.scheduledPodsHasSynced = podInformer.Informer().HasSynced // 同步调度的 pod
+	// 同步调度的 pod
+	sched.scheduledPodsHasSynced = podInformer.Informer().HasSynced
 
-	// 添加处理程序
+	// 添加事件处理程序
 	addAllEventHandlers(sched, informerFactory, podInformer)
 	return sched, nil
 }
 
 // initPolicyFromFile initialize policy from file
+// 从文件中初始化策略
 func initPolicyFromFile(policyFile string, policy *schedulerapi.Policy) error {
 	// Use a policy serialized in a file.
 	_, err := os.Stat(policyFile)
@@ -315,6 +324,7 @@ func initPolicyFromFile(policyFile string, policy *schedulerapi.Policy) error {
 }
 
 // initPolicyFromConfigMap initialize policy from configMap
+// 从configMap中初始化策略
 func initPolicyFromConfigMap(client clientset.Interface, policyRef *schedulerapi.SchedulerPolicyConfigMapSource, policy *schedulerapi.Policy) error {
 	// Use a policy serialized in a config map value.
 	policyConfigMap, err := client.CoreV1().ConfigMaps(policyRef.Namespace).Get(context.TODO(), policyRef.Name, metav1.GetOptions{})
@@ -339,8 +349,13 @@ func (sched *Scheduler) Run(ctx context.Context) {
 	if !cache.WaitForCacheSync(ctx.Done(), sched.scheduledPodsHasSynced) {
 		return
 	}
+
+	// SchedulingQueue 保存要调度的pod, 启动管理队列的 goroutine
+	// pkg/scheduler/internal/queue/scheduling_queue.go --> (p *PriorityQueue) Run()
 	sched.SchedulingQueue.Run()
+	// 循环执行 sched.scheduleOne 没有时间间隔
 	wait.UntilWithContext(ctx, sched.scheduleOne, 0)
+	// 停止管理队列的 goroutine
 	sched.SchedulingQueue.Close()
 }
 

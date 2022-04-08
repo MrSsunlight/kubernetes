@@ -43,6 +43,8 @@ import (
 // NewInTreeRegistry builds the registry with all the in-tree plugins.
 // A scheduler that runs out of tree plugins can register additional plugins
 // through the WithFrameworkOutOfTreeRegistry option.
+// 使用所有列表上的插件建立注册表
+// 当一个调度程序用完树型插件后，可以通过 WithFrameworkOutOfTreeRegistry 选项注册额外的插件
 func NewInTreeRegistry() runtime.Registry {
 	return runtime.Registry{
 		selectorspread.Name:                        selectorspread.New,

@@ -838,6 +838,7 @@ func (f *FlagSet) VarP(value Value, name, shorthand, usage string) {
 }
 
 // AddFlag will add the flag to the FlagSet
+// 将该标志添加到FlagSet
 func (f *FlagSet) AddFlag(flag *Flag) {
 	normalizedFlagName := f.normalizeFlagName(flag.Name)
 
@@ -877,7 +878,7 @@ func (f *FlagSet) AddFlag(flag *Flag) {
 }
 
 // AddFlagSet adds one FlagSet to another. If a flag is already present in f
-// the flag from newSet will be ignored.
+// 将一个 FlagSet 添加到另一个。 如果 f 中已经存在标志
 func (f *FlagSet) AddFlagSet(newSet *FlagSet) {
 	if newSet == nil {
 		return

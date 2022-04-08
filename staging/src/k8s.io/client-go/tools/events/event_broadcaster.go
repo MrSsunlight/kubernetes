@@ -159,6 +159,7 @@ func (e *eventBroadcasterImpl) finishSeries() {
 }
 
 // NewRecorder returns an EventRecorder that records events with the given event source.
+// 返回一个 EventRecorder 记录具有给定事件源的事件
 func (e *eventBroadcasterImpl) NewRecorder(scheme *runtime.Scheme, reportingController string) EventRecorder {
 	hostname, _ := os.Hostname()
 	reportingInstance := reportingController + "-" + hostname
@@ -365,6 +366,7 @@ func (e *eventBroadcasterAdapterImpl) StartRecordingToSink(stopCh <-chan struct{
 
 func (e *eventBroadcasterAdapterImpl) NewRecorder(name string) EventRecorder {
 	if e.eventsv1Broadcaster != nil && e.eventsv1Client != nil {
+		// (e *eventBroadcasterImpl) NewRecorder(scheme *runtime.Scheme, reportingController string) EventRecorder {}
 		return e.eventsv1Broadcaster.NewRecorder(scheme.Scheme, name)
 	}
 	return record.NewEventRecorderAdapter(e.DeprecatedNewLegacyRecorder(name))

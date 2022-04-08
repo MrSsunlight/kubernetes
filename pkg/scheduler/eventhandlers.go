@@ -359,7 +359,7 @@ func (sched *Scheduler) skipPodUpdate(pod *v1.Pod) bool {
 
 // addAllEventHandlers is a helper function used in tests and in Scheduler
 // to add event handlers for various informers.
-// addAllEventHandlers 是一个辅助函数，用于在测试和调度器中为各种通知程序添加事件处理程序
+// 是一个辅助函数，用于在测试和调度器中为各种通知程序添加事件处理程序
 func addAllEventHandlers(
 	sched *Scheduler,
 	informerFactory informers.SharedInformerFactory,

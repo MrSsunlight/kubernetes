@@ -75,16 +75,21 @@ type EventSink interface {
 // that smartly chooses which one to use.
 //
 // Deprecated: This interface will be removed once migration is completed.
+// 是一个辅助接口，以简化向新事件API的迁移
 type EventBroadcasterAdapter interface {
 	// StartRecordingToSink starts sending events received from the specified eventBroadcaster.
+	// 开始发送从指定的eventBroadcaster接收的事件
 	StartRecordingToSink(stopCh <-chan struct{})
 
 	// NewRecorder creates a new Event Recorder with specified name.
+	// 用指定的名称创建一个新的事件记录器
 	NewRecorder(name string) EventRecorder
 
 	// DeprecatedNewLegacyRecorder creates a legacy Event Recorder with specific name.
+	// 创建一个具有特定名称的传统事件记录器
 	DeprecatedNewLegacyRecorder(name string) record.EventRecorder
 
 	// Shutdown shuts down the broadcaster.
+	// 关闭广播
 	Shutdown()
 }

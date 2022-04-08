@@ -162,6 +162,7 @@ Run函数的主要内容如下：
 */
 func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *scheduler.Scheduler) error {
 	// To help debugging, immediately log version
+	// 获取整个代码库的版本 从 -ldflags 或 ./base.go 中获取
 	klog.V(1).Infof("Starting Kubernetes Scheduler version %+v", version.Get())
 
 	// Configz registration.
@@ -179,12 +180,14 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 	// Setup healthz checks.
 	// 设置健康检查
 	var checks []healthz.HealthChecker
+	// 如果开启 leader 选举，则添加到健康检查器中
 	if cc.ComponentConfig.LeaderElection.LeaderElect {
 		checks = append(checks, cc.LeaderElection.WatchDog)
 	}
 
 	// Start up the healthz server.
 	// 启动 healthz 服务器
+	// 不安全的服务
 	if cc.InsecureServing != nil {
 		separateMetrics := cc.InsecureMetricsServing != nil
 		handler := buildHandlerChain(newHealthzHandler(&cc.ComponentConfig, separateMetrics, checks...), nil, nil)
@@ -193,6 +196,7 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 			return fmt.Errorf("failed to start healthz server: %v", err)
 		}
 	}
+	// 不安全的指标服务
 	if cc.InsecureMetricsServing != nil {
 		handler := buildHandlerChain(newMetricsHandler(&cc.ComponentConfig), nil, nil)
 		// 启动一个不安全的 http 服务器
@@ -200,6 +204,7 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 			return fmt.Errorf("failed to start metrics server: %v", err)
 		}
 	}
+	// 安全服务
 	if cc.SecureServing != nil {
 		handler := buildHandlerChain(newHealthzHandler(&cc.ComponentConfig, false, checks...), cc.Authentication.Authenticator, cc.Authorization.Authorizer)
 		// TODO: handle stoppedCh returned by c.SecureServing.Serve
@@ -314,6 +319,8 @@ func newHealthzHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration, s
 // 获得 Factory 记录器
 func getRecorderFactory(cc *schedulerserverconfig.CompletedConfig) profile.RecorderFactory {
 	return func(name string) events.EventRecorder {
+		// 返回一个 EventRecorder 记录具有给定事件源的事件
+		// staging/src/k8s.io/client-go/tools/events/event_broadcaster.go --> NewRecorder()
 		return cc.EventBroadcaster.NewRecorder(name)
 	}
 }
@@ -346,6 +353,7 @@ func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions 
 	cc := c.Complete()
 
 	// 外部注册表, 用于扩展加载
+	// 当 调度器插件列表用完以后 可以通过 WithFrameworkOutOfTreeRegistry 注册其它插件
 	outOfTreeRegistry := make(runtime.Registry)
 	for _, option := range outOfTreeRegistryOptions {
 		if err := option(outOfTreeRegistry); err != nil {
@@ -353,18 +361,18 @@ func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions 
 		}
 	}
 
-	// 获得 Factory 记录器, 将要被废弃
+	// 获得 Factory 记录器
 	recorderFactory := getRecorderFactory(&cc)
 	// Create the scheduler.
 	// 创建调度器
 	sched, err := scheduler.New(cc.Client,
 		cc.InformerFactory,
 		cc.PodInformer,
-		recorderFactory,
+		recorderFactory, // 记录器
 		ctx.Done(),
 		scheduler.WithProfiles(cc.ComponentConfig.Profiles...),                              // 为调度器设置配置文件
-		scheduler.WithAlgorithmSource(cc.ComponentConfig.AlgorithmSource),                   // 设置Scheduler的schedulerAlgorithmSource
-		scheduler.WithPercentageOfNodesToScore(cc.ComponentConfig.PercentageOfNodesToScore), // 设置节点得分百分比
+		scheduler.WithAlgorithmSource(cc.ComponentConfig.AlgorithmSource),                   // 设置Scheduler的 调度算法源
+		scheduler.WithPercentageOfNodesToScore(cc.ComponentConfig.PercentageOfNodesToScore), // 设置节点 node 得分百分比
 		scheduler.WithFrameworkOutOfTreeRegistry(outOfTreeRegistry),                         // 为列表外的插件设置注册表。这些插件 将被追加到默认注册表中。
 		scheduler.WithPodMaxBackoffSeconds(cc.ComponentConfig.PodMaxBackoffSeconds),         // 设置 podMaxBackoffSeconds，默认值为10
 		scheduler.WithPodInitialBackoffSeconds(cc.ComponentConfig.PodInitialBackoffSeconds), // 设置 podInitialBackoffSeconds，默认值为1

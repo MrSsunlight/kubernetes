@@ -60,6 +60,7 @@ type Binder interface {
 
 // Configurator defines I/O, caching, and other functionality needed to
 // construct a new scheduler.
+// 配置器 定义构建新调度器所需的 I/O、缓存和其他功能
 type Configurator struct {
 	client clientset.Interface
 
@@ -70,17 +71,21 @@ type Configurator struct {
 	podInformer coreinformers.PodInformer
 
 	// Close this to stop all reflectors
+	// 关闭它以停止所有反射器
 	StopEverything <-chan struct{}
 
 	schedulerCache internalcache.Cache
 
 	// Disable pod preemption or not.
+	// 是否禁用 Pod 抢占
 	disablePreemption bool
 
 	// Always check all predicates even if the middle of one predicate fails.
+	// 即使一个谓词的中间失败，也要始终检查所有谓词
 	alwaysCheckAllPredicates bool
 
 	// percentageOfNodesToScore specifies percentage of all nodes to score in each scheduling cycle.
+	// 指定每个调度周期中所有节点的得分百分比
 	percentageOfNodesToScore int32
 
 	podInitialBackoffSeconds int64
@@ -161,6 +166,7 @@ func (c *Configurator) create() (*Scheduler, error) {
 	// The nominator will be passed all the way to framework instantiation.
 	// 提名者将被一直传递到框架实例化中
 	nominator := internalqueue.NewPodNominator()
+	// 根据配置构建配置文件
 	profiles, err := profile.NewMap(c.profiles, c.buildFramework, c.recorderFactory,
 		frameworkruntime.WithPodNominator(nominator))
 	if err != nil {

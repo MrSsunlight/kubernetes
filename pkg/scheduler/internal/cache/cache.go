@@ -39,6 +39,8 @@ var (
 // It automatically starts a go routine that manages expiration of assumed pods.
 // "ttl" is how long the assumed pod will get expired.
 // "stop" is the channel that would close the background goroutine.
+// 返回一个Cache的实现
+// 它自动启动一个go程序，管理假设pod的过期。“ttl”是假定的pod将过期的时间。"stop"是关闭后台goroutine的chan
 func New(ttl time.Duration, stop <-chan struct{}) Cache {
 	cache := newSchedulerCache(ttl, cleanAssumedPeriod, stop)
 	cache.run()

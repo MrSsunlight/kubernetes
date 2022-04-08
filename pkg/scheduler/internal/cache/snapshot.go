@@ -42,6 +42,7 @@ type Snapshot struct {
 var _ framework.SharedLister = &Snapshot{}
 
 // NewEmptySnapshot initializes a Snapshot struct and returns it.
+// 初始化一个快照结构并返回
 func NewEmptySnapshot() *Snapshot {
 	return &Snapshot{
 		nodeInfoMap: make(map[string]*framework.NodeInfo),

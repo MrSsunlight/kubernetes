@@ -44,6 +44,7 @@ type Profile struct {
 }
 
 // NewProfile builds a Profile for the given configuration.
+// 为给定配置构建配置文件
 func NewProfile(cfg config.KubeSchedulerProfile, frameworkFact FrameworkFactory, recorderFact RecorderFactory,
 	opts ...frameworkruntime.Option) (*Profile, error) {
 	recorder := recorderFact(cfg.SchedulerName)
@@ -63,6 +64,7 @@ func NewProfile(cfg config.KubeSchedulerProfile, frameworkFact FrameworkFactory,
 type Map map[string]*Profile
 
 // NewMap builds the profiles given by the configuration, indexed by name.
+// 构建由配置给定的配置文件，按名称进行索引
 func NewMap(cfgs []config.KubeSchedulerProfile, frameworkFact FrameworkFactory, recorderFact RecorderFactory,
 	opts ...frameworkruntime.Option) (Map, error) {
 	m := make(Map)
@@ -72,6 +74,7 @@ func NewMap(cfgs []config.KubeSchedulerProfile, frameworkFact FrameworkFactory, 
 		if err := v.validate(cfg); err != nil {
 			return nil, err
 		}
+		// 为给定配置构建配置文件
 		p, err := NewProfile(cfg, frameworkFact, recorderFact, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("creating profile for scheduler name %s: %v", cfg.SchedulerName, err)

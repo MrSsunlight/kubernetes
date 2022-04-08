@@ -249,6 +249,7 @@ var (
 var registerMetrics sync.Once
 
 // Register all metrics.
+// 注册所有指标
 func Register() {
 	// Register the metrics.
 	registerMetrics.Do(func() {
