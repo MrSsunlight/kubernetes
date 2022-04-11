@@ -40,17 +40,21 @@ var generation int64
 // QueuedPodInfo is a Pod wrapper with additional information related to
 // the pod's status in the scheduling queue, such as the timestamp when
 // it's added to the queue.
+// 是一个 Pod 包装器，其中包含与调度队列中 pod 的状态相关的附加信息，例如将其添加到队列时的时间戳
 type QueuedPodInfo struct {
+	// pod 集合
 	Pod *v1.Pod
 	// The time pod added to the scheduling queue.
+	// 添加到调度队列(scheduling queue)的时间
 	Timestamp time.Time
 	// Number of schedule attempts before successfully scheduled.
 	// It's used to record the # attempts metric.
+	// 成功调度前的调度尝试次数。它用于记录# attempts 指标
 	Attempts int
 	// The time when the pod is added to the queue for the first time. The pod may be added
 	// back to the queue multiple times before it's successfully scheduled.
 	// It shouldn't be updated once initialized. It's used to record the e2e scheduling
-	// latency for a pod.
+	// Pod 首次加入队列的时间。 在成功调度之前，Pod 可能会多次添加回队列。 初始化后不应更新。 它用于记录 Pod 的 e2e 调度延迟。
 	InitialAttemptTimestamp time.Time
 }
 

@@ -811,7 +811,7 @@ func NewPodNominator() framework.PodNominator {
 }
 
 // MakeNextPodFunc returns a function to retrieve the next pod from a given scheduling queue
-// MakeNextPodFunc 返回一个从给定调度队列中检索下一个 pod 的函数
+// MakeNextPodFunc 返回一个从给定调度队列中检索下一个 pod 的函数， 返回调度器的额外信息
 func MakeNextPodFunc(queue SchedulingQueue) func() *framework.QueuedPodInfo {
 	return func() *framework.QueuedPodInfo {
 		// 出栈 获取下一个 pod 信息

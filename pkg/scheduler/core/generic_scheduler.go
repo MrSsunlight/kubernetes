@@ -96,6 +96,7 @@ func (f *FitError) Error() string {
 
 // ScheduleAlgorithm is an interface implemented by things that know how to schedule pods
 // onto machines.
+// 一个由知道如何实现将pod调度到机器上的接口
 // TODO: Rename this type.
 type ScheduleAlgorithm interface {
 	Schedule(context.Context, *profile.Profile, *framework.CycleState, *v1.Pod) (scheduleResult ScheduleResult, err error)

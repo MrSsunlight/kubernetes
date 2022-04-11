@@ -51,8 +51,10 @@ import (
 
 const (
 	// SchedulerError is the reason recorded for events when an error occurs during scheduling a pod.
+	// 用于记录pod调度过程中发生错误时事件发生的原因
 	SchedulerError = "SchedulerError"
 	// Percentage of plugin metrics to be sampled.
+	// 抽样插件指标的百分比
 	pluginMetricsSamplePercent = 10
 )
 
@@ -82,11 +84,11 @@ type Scheduler struct {
 	StopEverything <-chan struct{}
 
 	// SchedulingQueue holds pods to be scheduled
-	// SchedulingQueue 保存要调度的 Pod
+	// 保存要调度的 Pod
 	SchedulingQueue internalqueue.SchedulingQueue
 
 	// Profiles are the scheduling profiles.
-	// Profiles 是调度配置文件
+	// 调度配置文件
 	Profiles profile.Map
 
 	scheduledPodsHasSynced func() bool
@@ -485,12 +487,16 @@ func (sched *Scheduler) finishBinding(prof *profile.Profile, assumed *v1.Pod, ta
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
 // scheduleOne 为单个 pod 执行整个调度工作流程。它被序列化在调度算法的适合的主机上
 func (sched *Scheduler) scheduleOne(ctx context.Context) {
+	// 在setup 中初始化赋值 nextpod   (c *Configurator) create() [pkg/scheduler/factory.go] --> internalqueue.MakeNextPodFunc(podQueue) [pkg/scheduler/internal/queue/scheduling_queue.go]
+	// 返回调度器的额外信息（首次加入队列时间、重复调度次数等）
 	podInfo := sched.NextPod()
 	// pod could be nil when schedulerQueue is closed
+	// 当 schedulerQueue 被关闭时，pod可能为零
 	if podInfo == nil || podInfo.Pod == nil {
 		return
 	}
 	pod := podInfo.Pod
+	// 获取 pod 调度配置文件
 	prof, err := sched.profileForPod(pod)
 	if err != nil {
 		// This shouldn't happen, because we only accept for scheduling the pods
@@ -498,6 +504,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 		klog.Error(err)
 		return
 	}
+	// 监测 pod 是否被跳过
 	if sched.skipPodSchedule(prof, pod) {
 		return
 	}
@@ -505,11 +512,16 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	klog.V(3).Infof("Attempting to schedule pod: %v/%v", pod.Namespace, pod.Name)
 
 	// Synchronously attempt to find a fit for the pod.
+	// 同步尝试找到适合 pod
+	// 开始时间
 	start := time.Now()
+	// 初始化一个新的 CycleState 并返回它的指针
 	state := framework.NewCycleState()
+	// 设置 记录插件指标 的初始值
 	state.SetRecordPluginMetrics(rand.Intn(100) < pluginMetricsSamplePercent)
 	schedulingCycleCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	//
 	scheduleResult, err := sched.Algorithm.Schedule(schedulingCycleCtx, prof, state, pod)
 	if err != nil {
 		// Schedule() may have failed because the pod would not fit on any host, so we try to
@@ -668,7 +680,9 @@ func getAttemptsLabel(p *framework.QueuedPodInfo) string {
 	return strconv.Itoa(p.Attempts)
 }
 
+// pod 调度配置文件
 func (sched *Scheduler) profileForPod(pod *v1.Pod) (*profile.Profile, error) {
+	// 调度配置文件
 	prof, ok := sched.Profiles[pod.Spec.SchedulerName]
 	if !ok {
 		return nil, fmt.Errorf("profile not found for scheduler name %q", pod.Spec.SchedulerName)
@@ -677,8 +691,10 @@ func (sched *Scheduler) profileForPod(pod *v1.Pod) (*profile.Profile, error) {
 }
 
 // skipPodSchedule returns true if we could skip scheduling the pod for specified cases.
+// 如果可以在指定的情况下跳过调度pod，则返回true。
 func (sched *Scheduler) skipPodSchedule(prof *profile.Profile, pod *v1.Pod) bool {
 	// Case 1: pod is being deleted.
+	// Pod正在被删除
 	if pod.DeletionTimestamp != nil {
 		prof.Recorder.Eventf(pod, nil, v1.EventTypeWarning, "FailedScheduling", "Scheduling", "skip schedule deleting pod: %v/%v", pod.Namespace, pod.Name)
 		klog.V(3).Infof("Skip schedule deleting pod: %v/%v", pod.Namespace, pod.Name)
@@ -688,6 +704,7 @@ func (sched *Scheduler) skipPodSchedule(prof *profile.Profile, pod *v1.Pod) bool
 	// Case 2: pod has been assumed and pod updates could be skipped.
 	// An assumed pod can be added again to the scheduling queue if it got an update event
 	// during its previous scheduling cycle but before getting assumed.
+	// 假设pod已经更新 跳过
 	if sched.skipPodUpdate(pod) {
 		return true
 	}

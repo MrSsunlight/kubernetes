@@ -3664,6 +3664,7 @@ type PodStatusResult struct {
 
 // Pod is a collection of containers that can run on a host. This resource is created
 // by clients and scheduled onto hosts.
+// 可以在主机上运行的容器的集合。该资源由客户端创建并调度到主机上
 type Pod struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard object's metadata.

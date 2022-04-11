@@ -49,6 +49,7 @@ type CycleState struct {
 }
 
 // NewCycleState initializes a new CycleState and returns its pointer.
+// 初始化一个新的 CycleState 并返回它的指针
 func NewCycleState() *CycleState {
 	return &CycleState{
 		storage: make(map[StateKey]StateData),
@@ -64,6 +65,7 @@ func (c *CycleState) ShouldRecordPluginMetrics() bool {
 }
 
 // SetRecordPluginMetrics sets recordPluginMetrics to the given value.
+// 将 recordPluginMetrics 设置为给定的值
 func (c *CycleState) SetRecordPluginMetrics(flag bool) {
 	if c == nil {
 		return
