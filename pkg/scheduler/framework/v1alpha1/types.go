@@ -59,6 +59,7 @@ type QueuedPodInfo struct {
 }
 
 // DeepCopy returns a deep copy of the QueuedPodInfo object.
+// 返回 QueuedPodInfo 对象的深层副本
 func (pqi *QueuedPodInfo) DeepCopy() *QueuedPodInfo {
 	return &QueuedPodInfo{
 		Pod:                     pqi.Pod.DeepCopy(),

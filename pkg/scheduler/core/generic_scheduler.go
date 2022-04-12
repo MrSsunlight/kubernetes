@@ -107,6 +107,7 @@ type ScheduleAlgorithm interface {
 
 // ScheduleResult represents the result of one pod scheduled. It will contain
 // the final selected Node, along with the selected intermediate information.
+// 表示一个 pod 调度的结果。 它将包含最终选定的节点，以及选定的中间信息
 type ScheduleResult struct {
 	// Name of the scheduler suggest host
 	SuggestedHost string
@@ -128,6 +129,7 @@ type genericScheduler struct {
 
 // snapshot snapshots scheduler cache and node infos for all fit and priority
 // functions.
+// 快照调度器缓存和节点信息的所有配合和优先功能
 func (g *genericScheduler) snapshot() error {
 	// Used for all fit and priority funcs.
 	return g.cache.UpdateSnapshot(g.nodeInfoSnapshot)
@@ -136,6 +138,7 @@ func (g *genericScheduler) snapshot() error {
 // Schedule tries to schedule the given pod to one of the nodes in the node list.
 // If it succeeds, it will return the name of the node.
 // If it fails, it will return a FitError error with reasons.
+// 尝试将给定的pod调度到节点列表中的一个节点。如果成功，它将返回节点的名称。如果失败，它将返回一个带有原因的fiiterror错误
 func (g *genericScheduler) Schedule(ctx context.Context, prof *profile.Profile, state *framework.CycleState, pod *v1.Pod) (result ScheduleResult, err error) {
 	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: pod.Namespace}, utiltrace.Field{Key: "name", Value: pod.Name})
 	defer trace.LogIfLong(100 * time.Millisecond)
@@ -155,6 +158,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, prof *profile.Profile, 
 	}
 
 	startPredicateEvalTime := time.Now()
+	// filter 过滤
 	feasibleNodes, filteredNodesStatuses, err := g.findNodesThatFitPod(ctx, prof, state, pod)
 	if err != nil {
 		return result, err
@@ -183,6 +187,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, prof *profile.Profile, 
 		}, nil
 	}
 
+	// score 打分
 	priorityList, err := g.prioritizeNodes(ctx, prof, state, pod, feasibleNodes)
 	if err != nil {
 		return result, err
@@ -191,6 +196,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, prof *profile.Profile, 
 	metrics.DeprecatedSchedulingAlgorithmPriorityEvaluationSecondsDuration.Observe(metrics.SinceInSeconds(startPriorityEvalTime))
 	metrics.DeprecatedSchedulingDuration.WithLabelValues(metrics.PriorityEvaluation).Observe(metrics.SinceInSeconds(startPriorityEvalTime))
 
+	// 7.选择节点
 	host, err := g.selectHost(priorityList)
 	trace.Step("Prioritizing done")
 
@@ -207,6 +213,7 @@ func (g *genericScheduler) Extenders() []framework.Extender {
 
 // selectHost takes a prioritized list of nodes and then picks one
 // in a reservoir sampling manner from the nodes that had the highest score.
+// 获取节点的优先列表，然后以水库采样的方式从得分最高的节点中选择一个
 func (g *genericScheduler) selectHost(nodeScoreList framework.NodeScoreList) (string, error) {
 	if len(nodeScoreList) == 0 {
 		return "", fmt.Errorf("empty priorityList")
@@ -232,6 +239,7 @@ func (g *genericScheduler) selectHost(nodeScoreList framework.NodeScoreList) (st
 
 // numFeasibleNodesToFind returns the number of feasible nodes that once found, the scheduler stops
 // its search for more feasible nodes.
+// 返回可行节点的数目，一旦找到，调度器停止搜索更多可行节点
 func (g *genericScheduler) numFeasibleNodesToFind(numAllNodes int32) (numNodes int32) {
 	if numAllNodes < minFeasibleNodesToFind || g.percentageOfNodesToScore >= 100 {
 		return numAllNodes
@@ -256,10 +264,12 @@ func (g *genericScheduler) numFeasibleNodesToFind(numAllNodes int32) (numNodes i
 
 // Filters the nodes to find the ones that fit the pod based on the framework
 // filter plugins and filter extenders.
+// 根据框架过滤器插件和过滤器扩展器找到适合 pod 的节点
 func (g *genericScheduler) findNodesThatFitPod(ctx context.Context, prof *profile.Profile, state *framework.CycleState, pod *v1.Pod) ([]*v1.Node, framework.NodeToStatusMap, error) {
 	filteredNodesStatuses := make(framework.NodeToStatusMap)
 
 	// Run "prefilter" plugins.
+	// 1. filter预处理阶段：遍历pod的所有initcontainer和主container，计算pod的总资源需求
 	s := prof.RunPreFilterPlugins(ctx, state, pod)
 	if !s.IsSuccess() {
 		if !s.IsUnschedulable() {
@@ -267,6 +277,7 @@ func (g *genericScheduler) findNodesThatFitPod(ctx context.Context, prof *profil
 		}
 		// All nodes will have the same status. Some non trivial refactoring is
 		// needed to avoid this copy.
+		// 所有节点将具有相同的状态。为了避免这种复制，需要进行一些重要的重构
 		allNodes, err := g.nodeInfoSnapshot.NodeInfos().List()
 		if err != nil {
 			return nil, nil, err
@@ -278,11 +289,13 @@ func (g *genericScheduler) findNodesThatFitPod(ctx context.Context, prof *profil
 
 	}
 
+	// 2. filter阶段，遍历所有节点，过滤掉不符合资源需求的节点
 	feasibleNodes, err := g.findNodesThatPassFilters(ctx, prof, state, pod, filteredNodesStatuses)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	// 3. 处理扩展plugin
 	feasibleNodes, err = g.findNodesThatPassExtenders(pod, feasibleNodes, filteredNodesStatuses)
 	if err != nil {
 		return nil, nil, err
@@ -291,6 +304,7 @@ func (g *genericScheduler) findNodesThatFitPod(ctx context.Context, prof *profil
 }
 
 // findNodesThatPassFilters finds the nodes that fit the filter plugins.
+// 找到符合过滤插件的节点
 func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *profile.Profile, state *framework.CycleState, pod *v1.Pod, statuses framework.NodeToStatusMap) ([]*v1.Node, error) {
 	allNodes, err := g.nodeInfoSnapshot.NodeInfos().List()
 	if err != nil {
@@ -365,6 +379,7 @@ func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *p
 	return feasibleNodes, nil
 }
 
+// 查找可行的节点
 func (g *genericScheduler) findNodesThatPassExtenders(pod *v1.Pod, feasibleNodes []*v1.Node, statuses framework.NodeToStatusMap) ([]*v1.Node, error) {
 	for _, extender := range g.extenders {
 		if len(feasibleNodes) == 0 {
@@ -398,6 +413,7 @@ func (g *genericScheduler) findNodesThatPassExtenders(pod *v1.Pod, feasibleNodes
 // addNominatedPods adds pods with equal or greater priority which are nominated
 // to run on the node. It returns 1) whether any pod was added, 2) augmented cycleState,
 // 3) augmented nodeInfo.
+// 添加具有相同或更高优先级的 Pod，这些 Pod 被指定在节点上运行
 func addNominatedPods(ctx context.Context, ph framework.PreemptHandle, pod *v1.Pod, state *framework.CycleState, nodeInfo *framework.NodeInfo) (bool, *framework.CycleState, *framework.NodeInfo, error) {
 	if ph == nil || nodeInfo == nil || nodeInfo.Node() == nil {
 		// This may happen only in tests.
@@ -434,6 +450,7 @@ func addNominatedPods(ctx context.Context, ph framework.PreemptHandle, pod *v1.P
 // SelectVictimsOnNode(). Preempt removes victims from PreFilter state and
 // NodeInfo before calling this function.
 // TODO: move this out so that plugins don't need to depend on <core> pkg.
+// 检查 NodeInfo 给定的节点是否满足过滤器插件
 func PodPassesFiltersOnNode(
 	ctx context.Context,
 	ph framework.PreemptHandle,
@@ -490,9 +507,10 @@ func PodPassesFiltersOnNode(
 // The scores from each plugin are added together to make the score for that node, then
 // any extenders are run as well.
 // All scores are finally combined (added) to get the total weighted scores of all nodes
+// 通过运行分数插件来确定节点的优先级
 func (g *genericScheduler) prioritizeNodes(
 	ctx context.Context,
-	prof *profile.Profile,
+	prof *profile.Profile, // Framework 接口：管理调度框架所使用的插件集。 配置的插件在调度环境中的指定点被调用
 	state *framework.CycleState,
 	pod *v1.Pod,
 	nodes []*v1.Node,
@@ -511,12 +529,14 @@ func (g *genericScheduler) prioritizeNodes(
 	}
 
 	// Run PreScore plugins.
+	// 4. score，比如处理弱亲和性，将preferredAffinity语法进行解析
 	preScoreStatus := prof.RunPreScorePlugins(ctx, state, pod, nodes)
 	if !preScoreStatus.IsSuccess() {
 		return nil, preScoreStatus.AsError()
 	}
 
 	// Run the Score plugins.
+	// 5. 为节点打分
 	scoresMap, scoreStatus := prof.RunScorePlugins(ctx, state, pod, nodes)
 	if !scoreStatus.IsSuccess() {
 		return nil, scoreStatus.AsError()
@@ -529,6 +549,7 @@ func (g *genericScheduler) prioritizeNodes(
 	}
 
 	// Summarize all scores.
+	// 归纳所有的分数
 	result := make(framework.NodeScoreList, 0, len(nodes))
 
 	for i := range nodes {
@@ -553,6 +574,7 @@ func (g *genericScheduler) prioritizeNodes(
 					metrics.SchedulerGoroutines.WithLabelValues("prioritizing_extender").Dec()
 					wg.Done()
 				}()
+				// 6. 处理扩展plugin  --> Prioritize() [pkg/scheduler/core/extender.go]
 				prioritizedList, weight, err := g.extenders[extIndex].Prioritize(pod, nodes)
 				if err != nil {
 					// Prioritization errors from extender can be ignored, let k8s/other extenders determine the priorities
@@ -587,6 +609,7 @@ func (g *genericScheduler) prioritizeNodes(
 }
 
 // podPassesBasicChecks makes sanity checks on the pod if it can be scheduled.
+// 如果可以安排，则对 pod 进行健全性检查
 func podPassesBasicChecks(pod *v1.Pod, pvcLister corelisters.PersistentVolumeClaimLister) error {
 	// Check PVCs used by the pod
 	namespace := pod.Namespace
@@ -626,6 +649,7 @@ func podPassesBasicChecks(pod *v1.Pod, pvcLister corelisters.PersistentVolumeCla
 }
 
 // NewGenericScheduler creates a genericScheduler object.
+// 创建一个 genericScheduler 对象, 满足 ScheduleAlgorithm 接口的实例
 func NewGenericScheduler(
 	cache internalcache.Cache,
 	nodeInfoSnapshot *internalcache.Snapshot,

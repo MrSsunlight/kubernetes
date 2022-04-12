@@ -41,10 +41,12 @@ type StateKey string
 // StateData stored by one plugin can be read, altered, or deleted by another plugin.
 // CycleState does not provide any data protection, as all plugins are assumed to be
 // trusted.
+// 为插件提供了一个存储和检索任意数据的机制。一个插件存储的StateData可以被另一个插件读取、改变或删除。CycleState不提供任何数据保护，因为所有的插件都被认为是可信的。
 type CycleState struct {
 	mx      sync.RWMutex
 	storage map[StateKey]StateData
 	// if recordPluginMetrics is true, PluginExecutionDuration will be recorded for this cycle.
+	// 如果 recordPluginMetrics 为true，在此周期内插件执行时间(PluginExecutionDuration)将被记录
 	recordPluginMetrics bool
 }
 

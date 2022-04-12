@@ -194,6 +194,7 @@ type LeaderElector struct {
 }
 
 // Run starts the leader election loop
+// 启动 leader 选举循环
 func (le *LeaderElector) Run(ctx context.Context) {
 	defer runtime.HandleCrash()
 	defer func() {
@@ -257,6 +258,7 @@ func (le *LeaderElector) acquire(ctx context.Context) bool {
 }
 
 // renew loops calling tryAcquireOrRenew and returns immediately when tryAcquireOrRenew fails or ctx signals done.
+// 循环调用 tryAcquireOrRenew，当 tryAcquireOrRenew 失败或 ctx 发出完成信号时立即返回。
 func (le *LeaderElector) renew(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

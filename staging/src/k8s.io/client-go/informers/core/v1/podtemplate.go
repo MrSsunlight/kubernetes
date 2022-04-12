@@ -34,6 +34,7 @@ import (
 
 // PodTemplateInformer provides access to a shared informer and lister for
 // PodTemplates.
+// 提供对 Pod Templates 的 informer 和 lister的访问
 type PodTemplateInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() v1.PodTemplateLister

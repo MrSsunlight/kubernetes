@@ -194,11 +194,11 @@ func (c *Configurator) create() (*Scheduler, error) {
 	)
 	debugger.ListenForSignal(c.StopEverything)
 
-	// 筛选算法
+	// 筛选算法， 创建一个 genericScheduler 对象, 满足 ScheduleAlgorithm 接口的实例
 	algo := core.NewGenericScheduler(
 		c.schedulerCache,
 		c.nodeInfoSnapshot,
-		extenders,
+		extenders, // 扩展器
 		c.informerFactory.Core().V1().PersistentVolumeClaims().Lister(),
 		c.disablePreemption,
 		c.percentageOfNodesToScore,

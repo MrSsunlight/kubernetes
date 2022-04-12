@@ -37,10 +37,11 @@ type RecorderFactory func(string) events.EventRecorder
 type FrameworkFactory func(config.KubeSchedulerProfile, ...frameworkruntime.Option) (framework.Framework, error)
 
 // Profile is a scheduling profile.
+// 调度配置文件
 type Profile struct {
-	framework.Framework
-	Recorder events.EventRecorder
-	Name     string
+	framework.Framework                      // 框架
+	Recorder            events.EventRecorder // 事件记录器
+	Name                string
 }
 
 // NewProfile builds a Profile for the given configuration.

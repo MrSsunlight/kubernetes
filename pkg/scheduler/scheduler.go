@@ -414,6 +414,7 @@ func updatePod(client clientset.Interface, pod *v1.Pod, condition *v1.PodConditi
 
 // assume signals to the cache that a pod is already in the cache, so that binding can be asynchronous.
 // assume modifies `assumed`.
+// 向缓存发出信号，表明pod已经在缓存中，因此绑定可以是异步的。假设修改 'assumed'
 func (sched *Scheduler) assume(assumed *v1.Pod, host string) error {
 	// Optimistically assume that the binding will succeed and send it to apiserver
 	// in the background.
@@ -421,6 +422,7 @@ func (sched *Scheduler) assume(assumed *v1.Pod, host string) error {
 	// immediately.
 	assumed.Spec.NodeName = host
 
+	// 8.假定选中pod  -->AssumePod() [pkg/scheduler/internal/cache/cache.go]
 	if err := sched.SchedulerCache.AssumePod(assumed); err != nil {
 		klog.Errorf("scheduler cache AssumePod failed: %v", err)
 		return err
@@ -513,15 +515,16 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 
 	// Synchronously attempt to find a fit for the pod.
 	// 同步尝试找到适合 pod
-	// 开始时间
+	// 记录开始时间
 	start := time.Now()
-	// 初始化一个新的 CycleState 并返回它的指针
+	// 初始化一个新的 CycleState 并返回它的指针, CycleState 是插件存储和检索的机制
 	state := framework.NewCycleState()
 	// 设置 记录插件指标 的初始值
 	state.SetRecordPluginMetrics(rand.Intn(100) < pluginMetricsSamplePercent)
 	schedulingCycleCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	//
+	// 尝试将给定的 pod 调度到节点列表中的一个节点。如果成功，它将返回节点的名称。如果失败，它将返回一个带有原因的fiiterror错误
+	// func (g *genericScheduler) Schedule(...) [pkg/scheduler/core/generic_scheduler.go]
 	scheduleResult, err := sched.Algorithm.Schedule(schedulingCycleCtx, prof, state, pod)
 	if err != nil {
 		// Schedule() may have failed because the pod would not fit on any host, so we try to
@@ -561,9 +564,11 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	// Tell the cache to assume that a pod now is running on a given node, even though it hasn't been bound yet.
 	// This allows us to keep scheduling without waiting on binding to occur.
+	// 告诉缓存假设一个pod现在正在一个给定的节点上运行，即使它还没有被绑定, 这使得我们可以在不等待绑定发生的情况下进行调度
 	assumedPodInfo := podInfo.DeepCopy()
 	assumedPod := assumedPodInfo.Pod
 	// assume modifies `assumedPod` by setting NodeName=scheduleResult.SuggestedHost
+	// 假设通过设置 NodeName = scheduleResult.SuggestedHost 修改 `assumedPod`
 	err = sched.assume(assumedPod, scheduleResult.SuggestedHost)
 	if err != nil {
 		metrics.PodScheduleError(prof.Name, metrics.SinceInSeconds(start))
@@ -577,6 +582,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	}
 
 	// Run the Reserve method of reserve plugins.
+	// 运行储备插件的储备方法
 	if sts := prof.RunReservePluginsReserve(schedulingCycleCtx, state, assumedPod, scheduleResult.SuggestedHost); !sts.IsSuccess() {
 		metrics.PodScheduleError(prof.Name, metrics.SinceInSeconds(start))
 		// trigger un-reserve to clean up state associated with the reserved Pod
@@ -589,6 +595,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	}
 
 	// Run "permit" plugins.
+	// 运行“许可”插件
 	runPermitStatus := prof.RunPermitPlugins(schedulingCycleCtx, state, assumedPod, scheduleResult.SuggestedHost)
 	if runPermitStatus.Code() != framework.Wait && !runPermitStatus.IsSuccess() {
 		var reason string
@@ -609,6 +616,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	}
 
 	// bind the pod to its host asynchronously (we can do this b/c of the assumption step above).
+	// 将 pod 异步绑定到其主机
 	go func() {
 		bindingCycleCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -647,6 +655,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 			return
 		}
 
+		// 9.绑定 pod
 		err := sched.bind(bindingCycleCtx, prof, assumedPod, scheduleResult.SuggestedHost, state)
 		if err != nil {
 			metrics.PodScheduleError(prof.Name, metrics.SinceInSeconds(start))

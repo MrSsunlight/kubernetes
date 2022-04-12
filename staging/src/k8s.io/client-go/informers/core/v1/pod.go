@@ -34,6 +34,7 @@ import (
 
 // PodInformer provides access to a shared informer and lister for
 // Pods.
+// 提供对 Pod informer 和 lister 的访问
 type PodInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() v1.PodLister

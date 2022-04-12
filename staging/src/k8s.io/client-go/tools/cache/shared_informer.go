@@ -156,6 +156,7 @@ type SharedInformer interface {
 	GetController() Controller
 	// Run starts and runs the shared informer, returning after it stops.
 	// The informer will be stopped when stopCh is closed.
+	// 启动并运行 informer，在其停止后返回。 当stopCh被关闭时，informer 将被停止。
 	Run(stopCh <-chan struct{})
 	// HasSynced returns true if the shared informer's store has been
 	// informed by at least one full LIST of the authoritative state

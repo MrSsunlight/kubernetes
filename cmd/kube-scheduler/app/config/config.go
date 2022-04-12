@@ -48,7 +48,7 @@ type Config struct {
 
 	Client          clientset.Interface
 	InformerFactory informers.SharedInformerFactory
-	PodInformer     coreinformers.PodInformer
+	PodInformer     coreinformers.PodInformer // client_go 内得
 
 	//lint:ignore SA1019 this deprecated field still needs to be used for now. It will be removed once the migration is done.
 	EventBroadcaster events.EventBroadcasterAdapter

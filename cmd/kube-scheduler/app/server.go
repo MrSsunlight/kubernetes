@@ -217,10 +217,11 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 	// Start all informers.
 	// 运行PodInformer，并运行InformerFactory。此部分的逻辑为client-go的informer机制
 	go cc.PodInformer.Informer().Run(ctx.Done())
-	cc.InformerFactory.Start(ctx.Done())
+	// 初始化所有请求的 informer
+	cc.InformerFactory.Start(ctx.Done()) // func (f *sharedInformerFactory) Start(stopCh <-chan struct{}) [staging/src/k8s.io/client-go/informers/factory.go]
 
 	// Wait for all caches to sync before scheduling.
-	// 在调度之前等待所有缓存同步
+	// 在调度之前等待所有已启动的informers的缓存被同步
 	cc.InformerFactory.WaitForCacheSync(ctx.Done())
 
 	// If leader election is enabled, runCommand via LeaderElector until done and exit.

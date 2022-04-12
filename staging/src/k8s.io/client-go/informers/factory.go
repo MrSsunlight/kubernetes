@@ -139,7 +139,7 @@ func (f *sharedInformerFactory) Start(stopCh <-chan struct{}) {
 }
 
 // WaitForCacheSync waits for all started informers' cache were synced.
-// WaitForCacheSync 等待所有已启动的informers的缓存被同步
+// 等待所有已启动的informers的缓存被同步
 func (f *sharedInformerFactory) WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool {
 	informers := func() map[reflect.Type]cache.SharedIndexInformer {
 		f.lock.Lock()

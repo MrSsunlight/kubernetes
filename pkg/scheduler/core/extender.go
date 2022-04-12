@@ -270,6 +270,7 @@ func convertToNodeNameToMetaVictims(
 // Filter based on extender implemented predicate functions. The filtered list is
 // expected to be a subset of the supplied list; otherwise the function returns an error.
 // failedNodesMap optionally contains the list of failed nodes and failure reasons.
+// 基于扩展器实现的谓词函数。过滤后的列表应该是所提供列表的一个子集；否则，该函数会返回一个错误。 failedNodesMap 可选地包含失败节点的列表和失败原因
 func (h *HTTPExtender) Filter(
 	pod *v1.Pod,
 	nodes []*v1.Node,
@@ -340,6 +341,7 @@ func (h *HTTPExtender) Filter(
 // Prioritize based on extender implemented priority functions. Weight*priority is added
 // up for each such priority function. The returned score is added to the score computed
 // by Kubernetes scheduler. The total score is used to do the host selection.
+// 基于扩展器实现的优先级函数。每个优先级函数的权重*优先级结果相加。返回的分数与Kubernetes调度程序计算的分数相加。总分被用来进行主机选择。
 func (h *HTTPExtender) Prioritize(pod *v1.Pod, nodes []*v1.Node) (*extenderv1.HostPriorityList, int64, error) {
 	var (
 		result    extenderv1.HostPriorityList

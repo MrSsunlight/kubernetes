@@ -392,15 +392,18 @@ type BindPlugin interface {
 
 // Framework manages the set of plugins in use by the scheduling framework.
 // Configured plugins are called at specified points in a scheduling context.
+// 管理调度框架所使用的插件集。 配置的插件在调度环境中的指定点被调用
 type Framework interface {
 	FrameworkHandle
 	// QueueSortFunc returns the function to sort pods in scheduling queue
+	// 返回对调度队列中的pod进行排序的函数
 	QueueSortFunc() LessFunc
 
 	// RunPreFilterPlugins runs the set of configured prefilter plugins. It returns
 	// *Status and its code is set to non-success if any of the plugins returns
 	// anything but Success. If a non-success status is returned, then the scheduling
 	// cycle is aborted.
+	// 运行一组配置的预筛选过滤器插件。 如果任何插件返回成功以外的任何内容，它返回值 *Status 的结果为 non-success。 如果返回非成功状态，则调度周期中止
 	RunPreFilterPlugins(ctx context.Context, state *CycleState, pod *v1.Pod) *Status
 
 	// RunFilterPlugins runs the set of configured filter plugins for pod on
@@ -410,12 +413,16 @@ type Framework interface {
 	// preemption, we may pass a copy of the original nodeInfo object that has some pods
 	// removed from it to evaluate the possibility of preempting them to
 	// schedule the target pod.
+	// 为给定节点上的pod运行配置的过滤插件集。注意，对于被评估的节点，传递的nodeInfo引用可能与NodeInfoSnapshot map中的不同（例如，被认为在该节点上运行的pod可能不同）。
+	// 例如，在抢占期间，我们可能会传递一个原始nodeInfo对象的副本，该副本中的一些pod已经被删除，以评估抢占它们来安排目标pod的可能性
 	RunFilterPlugins(ctx context.Context, state *CycleState, pod *v1.Pod, nodeInfo *NodeInfo) PluginToStatus
 
 	// RunPostFilterPlugins runs the set of configured PostFilter plugins.
 	// PostFilter plugins can either be informational, in which case should be configured
 	// to execute first and return Unschedulable status, or ones that try to change the
 	// cluster state to make the pod potentially schedulable in a future scheduling cycle.
+	// 运行一组已配置的 PostFilter 插件集。 PostFilter 插件可以是信息性的，在这种情况下，应该被配置为首先执行并返回不可调度(Unschedulable)状态，
+	// 或者尝试改变集群状态以使 pod 在未来的调度周期中可能被调度
 	RunPostFilterPlugins(ctx context.Context, state *CycleState, pod *v1.Pod, filteredNodeStatusMap NodeToStatusMap) (*PostFilterResult, *Status)
 
 	// RunPreFilterExtensionAddPod calls the AddPod interface for the set of configured
