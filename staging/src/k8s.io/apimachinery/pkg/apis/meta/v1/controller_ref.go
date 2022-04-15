@@ -21,6 +21,7 @@ import (
 )
 
 // IsControlledBy checks if the  object has a controllerRef set to the given owner
+// 检查对象是否设置了一个给定所有者的控制器参考（controllerRef）
 func IsControlledBy(obj Object, owner Object) bool {
 	ref := GetControllerOfNoCopy(obj)
 	if ref == nil {

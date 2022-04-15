@@ -34,21 +34,26 @@ import (
 )
 
 // NodeScoreList declares a list of nodes and their scores.
+// 声明节点列表及其分数
 type NodeScoreList []NodeScore
 
 // NodeScore is a struct with node name and score.
+// 具有节点名称和分数的结构
 type NodeScore struct {
 	Name  string
 	Score int64
 }
 
 // PluginToNodeScores declares a map from plugin name to its NodeScoreList.
+// 声明从插件名称到其 NodeScoreList 的映射
 type PluginToNodeScores map[string]NodeScoreList
 
 // NodeToStatusMap declares map from node name to its status.
+// 声明从节点名称到其状态的映射
 type NodeToStatusMap map[string]*Status
 
 // Code is the Status code/type which is returned from plugins.
+// 从插件返回的状态码/类型
 type Code int
 
 // These are predefined codes used in a Status.
@@ -459,6 +464,7 @@ type Framework interface {
 	// configured reserve plugins. If any of these calls returns an error, it
 	// does not continue running the remaining ones and returns the error. In
 	// such case, pod will not be scheduled.
+	// 运行一组已配置的保留插件的 Reserve 方法。如果这些调用中的任何一个返回错误，它不会继续运行其余的调用，并返回错误。在这种情况下，pod将不会被调度
 	RunReservePluginsReserve(ctx context.Context, state *CycleState, pod *v1.Pod, nodeName string) *Status
 
 	// RunReservePluginsUnreserve runs the Unreserve method of the set of

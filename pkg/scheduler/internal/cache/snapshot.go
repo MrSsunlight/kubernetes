@@ -137,6 +137,7 @@ func (s *Snapshot) NodeInfos() framework.NodeInfoLister {
 }
 
 // NumNodes returns the number of nodes in the snapshot.
+// 返回快照中的节点数
 func (s *Snapshot) NumNodes() int {
 	return len(s.nodeInfoList)
 }

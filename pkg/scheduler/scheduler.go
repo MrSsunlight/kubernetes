@@ -363,6 +363,7 @@ func (sched *Scheduler) Run(ctx context.Context) {
 
 // recordSchedulingFailure records an event for the pod that indicates the
 // pod has failed to schedule. Also, update the pod condition and nominated node name if set.
+// 为pod记录一个事件，表明该pod未能被调度。同时，如果设置了更新 pod 条件和指定节点名称，则更新 pod 条件和指定节点名称。
 func (sched *Scheduler) recordSchedulingFailure(prof *profile.Profile, podInfo *framework.QueuedPodInfo, err error, reason string, nominatedNode string) {
 	sched.Error(podInfo, err)
 
@@ -531,12 +532,16 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 		// preempt, with the expectation that the next time the pod is tried for scheduling it
 		// will fit due to the preemption. It is also possible that a different pod will schedule
 		// into the resources that were preempted, but this is harmless.
+		// Schedule() 可能因为 Pod 不适合任何主机而失败，因此我们尝试抢占，期望下次尝试调度 Pod 时由于抢占而适合。
+		// 也有可能不同的 pod 会调度到被抢占的资源中，但这是无害的
 		nominatedNode := ""
 		if fitError, ok := err.(*core.FitError); ok {
 			if !prof.HasPostFilterPlugins() {
+				// 没有注册PostFilter插件，所以不会进行抢占
 				klog.V(3).Infof("No PostFilter plugins are registered, so no preemption will be performed.")
 			} else {
 				// Run PostFilter plugins to try to make the pod schedulable in a future scheduling cycle.
+				// 运行 PostFilter 插件以尝试使 pod 在未来的调度周期中可调度
 				result, status := prof.RunPostFilterPlugins(ctx, state, pod, fitError.FilteredNodesStatuses)
 				if status.Code() == framework.Error {
 					klog.Errorf("Status after running PostFilter plugins for pod %v/%v: %v", pod.Namespace, pod.Name, status)
@@ -544,20 +549,24 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 					klog.V(5).Infof("Status after running PostFilter plugins for pod %v/%v: %v", pod.Namespace, pod.Name, status)
 				}
 				if status.IsSuccess() && result != nil {
+					// 被提名的节点
 					nominatedNode = result.NominatedNodeName
 				}
 			}
 			// Pod did not fit anywhere, so it is counted as a failure. If preemption
 			// succeeds, the pod should get counted as a success the next time we try to
 			// schedule it. (hopefully)
+			// Pod 不适合任何地方，因此被视为失败。 如果抢占成功，下次我们尝试调度它时，该 pod 应该被视为成功。 （希望）
 			metrics.PodUnschedulable(prof.Name, metrics.SinceInSeconds(start))
-		} else if err == core.ErrNoNodesAvailable {
+		} else if err == core.ErrNoNodesAvailable { // 不可调度
 			// No nodes available is counted as unschedulable rather than an error.
+			// 没有可用节点被计为不可调度而不是错误
 			metrics.PodUnschedulable(prof.Name, metrics.SinceInSeconds(start))
-		} else {
+		} else { // 调度错误
 			klog.ErrorS(err, "Error selecting node for pod", "pod", klog.KObj(pod))
 			metrics.PodScheduleError(prof.Name, metrics.SinceInSeconds(start))
 		}
+		// 记录pod调度失败事件
 		sched.recordSchedulingFailure(prof, podInfo, err, v1.PodReasonUnschedulable, nominatedNode)
 		return
 	}

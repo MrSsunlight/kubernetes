@@ -27,11 +27,14 @@ import (
 
 // PersistentVolumeClaimLister helps list PersistentVolumeClaims.
 // All objects returned here must be treated as read-only.
+// 帮助列出 PersistentVolumeClaims。 此处返回的所有对象都必须被视为只读
 type PersistentVolumeClaimLister interface {
 	// List lists all PersistentVolumeClaims in the indexer.
 	// Objects returned here must be treated as read-only.
+	// 列出索引器中的所有 PersistentVolumeClaims。 此处返回的对象必须被视为只读
 	List(selector labels.Selector) (ret []*v1.PersistentVolumeClaim, err error)
 	// PersistentVolumeClaims returns an object that can list and get PersistentVolumeClaims.
+	// 返回一个可以列出和获得 PersistentVolumeClaims 的对象。
 	PersistentVolumeClaims(namespace string) PersistentVolumeClaimNamespaceLister
 	PersistentVolumeClaimListerExpansion
 }

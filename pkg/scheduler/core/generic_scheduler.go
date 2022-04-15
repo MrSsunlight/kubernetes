@@ -143,45 +143,53 @@ func (g *genericScheduler) Schedule(ctx context.Context, prof *profile.Profile, 
 	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: pod.Namespace}, utiltrace.Field{Key: "name", Value: pod.Name})
 	defer trace.LogIfLong(100 * time.Millisecond)
 
+	// 对 pod 进行健全性检查（基础检查 -- pvc）
 	if err := podPassesBasicChecks(pod, g.pvcLister); err != nil {
 		return result, err
 	}
 	trace.Step("Basic checks done")
 
+	// 完成了对调度器缓存和节点信息的快照
 	if err := g.snapshot(); err != nil {
 		return result, err
 	}
 	trace.Step("Snapshotting scheduler cache and node infos done")
 
+	// 检查快照中节点数
 	if g.nodeInfoSnapshot.NumNodes() == 0 {
 		return result, ErrNoNodesAvailable
 	}
 
+	// 谓词评估开始时间
 	startPredicateEvalTime := time.Now()
 	// filter 过滤
+	// 根据框架过滤器插件和过滤器扩展器找到适合 pod 的节点
 	feasibleNodes, filteredNodesStatuses, err := g.findNodesThatFitPod(ctx, prof, state, pod)
 	if err != nil {
 		return result, err
 	}
+	// 计算谓词完成
 	trace.Step("Computing predicates done")
 
+	// 监测可行节点数量
 	if len(feasibleNodes) == 0 {
 		return result, &FitError{
 			Pod:                   pod,
 			NumAllNodes:           g.nodeInfoSnapshot.NumNodes(),
-			FilteredNodesStatuses: filteredNodesStatuses,
+			FilteredNodesStatuses: filteredNodesStatuses, // 节点名到状态的映射
 		}
 	}
 
 	metrics.DeprecatedSchedulingAlgorithmPredicateEvaluationSecondsDuration.Observe(metrics.SinceInSeconds(startPredicateEvalTime))
 	metrics.DeprecatedSchedulingDuration.WithLabelValues(metrics.PredicateEvaluation).Observe(metrics.SinceInSeconds(startPredicateEvalTime))
 
+	// 优先评估开始时间
 	startPriorityEvalTime := time.Now()
 	// When only one node after predicate, just use it.
+	// 当谓词后面只有一个节点时，直接使用，不再进行后续打分等操作
 	if len(feasibleNodes) == 1 {
 		metrics.DeprecatedSchedulingAlgorithmPriorityEvaluationSecondsDuration.Observe(metrics.SinceInSeconds(startPriorityEvalTime))
-		return ScheduleResult{
-			SuggestedHost:  feasibleNodes[0].Name,
+		return ScheduleResult{SuggestedHost: feasibleNodes[0].Name,
 			EvaluatedNodes: 1 + len(filteredNodesStatuses),
 			FeasibleNodes:  1,
 		}, nil
@@ -269,7 +277,7 @@ func (g *genericScheduler) findNodesThatFitPod(ctx context.Context, prof *profil
 	filteredNodesStatuses := make(framework.NodeToStatusMap)
 
 	// Run "prefilter" plugins.
-	// 1. filter预处理阶段：遍历pod的所有initcontainer和主container，计算pod的总资源需求
+	// 1. filter预处理阶段：遍历 pod 的所有 initcontainer 和主 container ，计算pod的总资源需求
 	s := prof.RunPreFilterPlugins(ctx, state, pod)
 	if !s.IsSuccess() {
 		if !s.IsUnschedulable() {
@@ -612,6 +620,7 @@ func (g *genericScheduler) prioritizeNodes(
 // 如果可以安排，则对 pod 进行健全性检查
 func podPassesBasicChecks(pod *v1.Pod, pvcLister corelisters.PersistentVolumeClaimLister) error {
 	// Check PVCs used by the pod
+	// 检查 pod 使用的 PVC
 	namespace := pod.Namespace
 	manifest := &(pod.Spec)
 	for i := range manifest.Volumes {
@@ -629,16 +638,20 @@ func podPassesBasicChecks(pod *v1.Pod, pvcLister corelisters.PersistentVolumeCla
 			// Volume is not using a PVC, ignore
 			continue
 		}
+		// 获取对应的配置的pvc
 		pvc, err := pvcLister.PersistentVolumeClaims(namespace).Get(pvcName)
+		// 异常结束
 		if err != nil {
 			// The error has already enough context ("persistentvolumeclaim "myclaim" not found")
 			return err
 		}
 
+		// pvc 已被删除
 		if pvc.DeletionTimestamp != nil {
 			return fmt.Errorf("persistentvolumeclaim %q is being deleted", pvc.Name)
 		}
 
+		// 短暂的？？？
 		if ephemeral &&
 			!metav1.IsControlledBy(pvc, pod) {
 			return fmt.Errorf("persistentvolumeclaim %q was not created for the pod", pvc.Name)
