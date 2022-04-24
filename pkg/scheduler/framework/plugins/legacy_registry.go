@@ -40,6 +40,7 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumezone"
 )
 
+// 在 createFromConfig 初始化注册
 const (
 	// EqualPriority defines the name of prioritizer function that gives an equal weight of one to all nodes.
 	EqualPriority = "EqualPriority"
@@ -78,6 +79,7 @@ const (
 	EvenPodsSpreadPriority = "EvenPodsSpreadPriority"
 )
 
+// 谓词宏定义
 const (
 	// MatchInterPodAffinityPred defines the name of predicate MatchInterPodAffinity.
 	MatchInterPodAffinityPred = "MatchInterPodAffinity"
@@ -86,8 +88,10 @@ const (
 	// GeneralPred defines the name of predicate GeneralPredicates.
 	GeneralPred = "GeneralPredicates"
 	// HostNamePred defines the name of predicate HostName.
+	// 定义谓词 HostName 的名称
 	HostNamePred = "HostName"
 	// PodFitsHostPortsPred defines the name of predicate PodFitsHostPorts.
+	// 定义谓词 PodFitsHostPorts 的名称
 	PodFitsHostPortsPred = "PodFitsHostPorts"
 	// MatchNodeSelectorPred defines the name of predicate MatchNodeSelector.
 	MatchNodeSelectorPred = "MatchNodeSelector"
@@ -174,6 +178,7 @@ type ConfigProducerArgs struct {
 type ConfigProducer func(args ConfigProducerArgs) (config.Plugins, []config.PluginConfig)
 
 // NewLegacyRegistry returns a legacy algorithm registry of predicates and priorities.
+// 返回谓词和优先级的遗留算法注册表
 func NewLegacyRegistry() *LegacyRegistry {
 	registry := &LegacyRegistry{
 		// MandatoryPredicates the set of keys for predicates that the scheduler will
@@ -441,6 +446,7 @@ func NewLegacyRegistry() *LegacyRegistry {
 }
 
 // registers a config producer for a predicate.
+// 给对应谓词注册对应的生产者
 func (lr *LegacyRegistry) registerPredicateConfigProducer(name string, producer ConfigProducer) {
 	if _, exist := lr.PredicateToConfigProducer[name]; exist {
 		klog.Fatalf("already registered %q", name)
@@ -470,6 +476,7 @@ func appendToPluginSet(set *config.PluginSet, name string, weight *int32) *confi
 
 // ProcessPredicatePolicy given a PredicatePolicy, return the plugin name implementing the predicate and update
 // the ConfigProducerArgs if necessary.
+// 给定 PredicatePolicy，返回实现谓词的插件名称，并在必要时更新 ConfigProducerArgs
 func (lr *LegacyRegistry) ProcessPredicatePolicy(policy config.PredicatePolicy, pluginArgs *ConfigProducerArgs) string {
 	validatePredicateOrDie(policy)
 

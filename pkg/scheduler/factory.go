@@ -237,13 +237,16 @@ func (c *Configurator) createFromProvider(providerName string) (*Scheduler, erro
 
 // createFromConfig creates a scheduler from the configuration file
 // Only reachable when using v1alpha1 component config
+// 从配置文件中创建一个调度器 （仅在使用 v1alpha1 组件配置时可访问）
 func (c *Configurator) createFromConfig(policy schedulerapi.Policy) (*Scheduler, error) {
+	// 谓词算法注册
 	lr := frameworkplugins.NewLegacyRegistry()
 	args := &frameworkplugins.ConfigProducerArgs{}
 
 	klog.V(2).Infof("Creating scheduler from configuration: %v", policy)
 
 	// validate the policy configuration
+	// 验证策略配置
 	if err := validation.ValidatePolicy(policy); err != nil {
 		return nil, err
 	}
@@ -276,6 +279,7 @@ func (c *Configurator) createFromConfig(policy schedulerapi.Policy) (*Scheduler,
 
 	// HardPodAffinitySymmetricWeight in the policy config takes precedence over
 	// CLI configuration.
+	// 策略配置中的 HardPodAffinitySymmetricWeight 优先于 CLI 配置
 	if policy.HardPodAffinitySymmetricWeight != 0 {
 		args.InterPodAffinityArgs = &schedulerapi.InterPodAffinityArgs{
 			HardPodAffinityWeight: policy.HardPodAffinitySymmetricWeight,
@@ -284,6 +288,7 @@ func (c *Configurator) createFromConfig(policy schedulerapi.Policy) (*Scheduler,
 
 	// When AlwaysCheckAllPredicates is set to true, scheduler checks all the configured
 	// predicates even after one or more of them fails.
+	// 当 AlwaysCheckAllPredicates 被设置为 "true "时，调度器会检查所有配置的谓词，即使其中一个或多个谓词失败。
 	if policy.AlwaysCheckAllPredicates {
 		c.alwaysCheckAllPredicates = policy.AlwaysCheckAllPredicates
 	}
@@ -301,9 +306,11 @@ func (c *Configurator) createFromConfig(policy schedulerapi.Policy) (*Scheduler,
 	}
 	// Combine all framework configurations. If this results in any duplication, framework
 	// instantiation should fail.
+	// 合并所有的框架配置。如果这导致任何重复，框架实例化就会失败
 	var defPlugins schedulerapi.Plugins
 	// "PrioritySort", "DefaultPreemption" and "DefaultBinder" were neither predicates nor priorities
 	// before. We add them by default.
+	// “PrioritySort”、“DefaultPreemption”和“DefaultBinder”之前既不是谓词也不是优先级。默认添加它们
 	defPlugins.Append(&schedulerapi.Plugins{
 		QueueSort: &schedulerapi.PluginSet{
 			Enabled: []schedulerapi.Plugin{{Name: queuesort.Name}},
@@ -324,10 +331,12 @@ func (c *Configurator) createFromConfig(policy schedulerapi.Policy) (*Scheduler,
 	for i := range c.profiles {
 		prof := &c.profiles[i]
 		// Plugins are empty when using Policy.
+		// 使用 Policy 时插件为空
 		prof.Plugins = &schedulerapi.Plugins{}
 		prof.Plugins.Append(&defPlugins)
 
 		// PluginConfig is ignored when using Policy.
+		// 使用 Policy 时忽略 PluginConfig
 		prof.PluginConfig = defPluginConfig
 	}
 
