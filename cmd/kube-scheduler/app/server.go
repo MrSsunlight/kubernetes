@@ -222,6 +222,7 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 
 	// Wait for all caches to sync before scheduling.
 	// 在调度之前等待所有已启动的informers的缓存被同步
+	// func (f *sharedInformerFactory) WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool {} [staging/src/k8s.io/client-go/informers/factory.go]
 	cc.InformerFactory.WaitForCacheSync(ctx.Done())
 
 	// If leader election is enabled, runCommand via LeaderElector until done and exit.
@@ -367,9 +368,9 @@ func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions 
 	// Create the scheduler.
 	// 创建调度器
 	sched, err := scheduler.New(cc.Client,
-		cc.InformerFactory,
-		cc.PodInformer,
-		recorderFactory, // 记录器
+		cc.InformerFactory, // node的监听
+		cc.PodInformer,     // pod的监听
+		recorderFactory,    // 记录器
 		ctx.Done(),
 		scheduler.WithProfiles(cc.ComponentConfig.Profiles...),                              // 为调度器设置配置文件
 		scheduler.WithAlgorithmSource(cc.ComponentConfig.AlgorithmSource),                   // 设置Scheduler的 调度算法源

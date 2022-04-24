@@ -67,6 +67,7 @@ type Scheduler struct {
 	// 预计通过SchedulerCache做出的改变将被NodeLister和Algorithm观察到
 	SchedulerCache internalcache.Cache
 
+	// NewGenericScheduler() [pkg/scheduler/core/generic_scheduler.go] 中 genericScheduler 实例化 ScheduleAlgorithm 接口
 	Algorithm core.ScheduleAlgorithm
 
 	// NextPod should be a function that blocks until the next pod
@@ -491,7 +492,7 @@ func (sched *Scheduler) finishBinding(prof *profile.Profile, assumed *v1.Pod, ta
 // scheduleOne 为单个 pod 执行整个调度工作流程。它被序列化在调度算法的适合的主机上
 func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	// 在setup 中初始化赋值 nextpod   (c *Configurator) create() [pkg/scheduler/factory.go] --> internalqueue.MakeNextPodFunc(podQueue) [pkg/scheduler/internal/queue/scheduling_queue.go]
-	// 返回调度器的额外信息（首次加入队列时间、重复调度次数等）
+	// 获取待调度的pod，返回调度器的额外信息（首次加入队列时间、重复调度次数等）
 	podInfo := sched.NextPod()
 	// pod could be nil when schedulerQueue is closed
 	// 当 schedulerQueue 被关闭时，pod可能为零
@@ -524,9 +525,10 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	state.SetRecordPluginMetrics(rand.Intn(100) < pluginMetricsSamplePercent)
 	schedulingCycleCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	// 尝试将给定的 pod 调度到节点列表中的一个节点。如果成功，它将返回节点的名称。如果失败，它将返回一个带有原因的fiiterror错误
-	// func (g *genericScheduler) Schedule(...) [pkg/scheduler/core/generic_scheduler.go]
+	// 尝试将给定的 pod 调度到节点列表中的一个节点。如果成功，它将返回 node 的名称。如果失败，它将返回一个带有原因的fiiterror错误
+	// Algorithm --> genericScheduler; func (g *genericScheduler) Schedule(...) [pkg/scheduler/core/generic_scheduler.go]
 	scheduleResult, err := sched.Algorithm.Schedule(schedulingCycleCtx, prof, state, pod)
+	// 如果筛选过程出错
 	if err != nil {
 		// Schedule() may have failed because the pod would not fit on any host, so we try to
 		// preempt, with the expectation that the next time the pod is tried for scheduling it
