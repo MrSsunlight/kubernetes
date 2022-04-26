@@ -31,6 +31,7 @@ import (
 
 const (
 	// Name is the name of the plugin used in the plugin registry and configurations.
+	// 在插件注册表和配置中使用的插件的名称
 	Name = "ServiceAffinity"
 
 	// preFilterStateKey is the key in CycleState to ServiceAffinity pre-computed data.

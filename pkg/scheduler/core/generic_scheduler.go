@@ -318,13 +318,15 @@ func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *p
 	if err != nil {
 		return nil, err
 	}
-
+	// 获取可行节点的数目
 	numNodesToFind := g.numFeasibleNodesToFind(int32(len(allNodes)))
 
 	// Create feasible list with enough space to avoid growing it
 	// and allow assigning.
+	// 创建一个有足够空间的可行列表，以避免增长，并允许分配
 	feasibleNodes := make([]*v1.Node, numNodesToFind)
 
+	// 过滤插件检查
 	if !prof.HasFilterPlugins() {
 		length := len(allNodes)
 		for i := range feasibleNodes {
@@ -338,10 +340,13 @@ func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *p
 	var statusesLock sync.Mutex
 	var feasibleNodesLen int32
 	ctx, cancel := context.WithCancel(ctx)
+	// 定义 checkNode 函数
 	checkNode := func(i int) {
 		// We check the nodes starting from where we left off in the previous scheduling cycle,
 		// this is to make sure all nodes have the same chance of being examined across pods.
+		// 从上一个调度周期中停止的地方开始检查节点，这是为了确保所有节点在pods中都有相同的检查机会
 		nodeInfo := allNodes[(g.nextStartNodeIndex+i)%len(allNodes)]
+		// 检查 NodeInfo 给定的节点是否满足过滤器插件
 		fits, status, err := PodPassesFiltersOnNode(ctx, prof.PreemptHandle(), state, pod, nodeInfo)
 		if err != nil {
 			errCh.SendErrorWithCancel(err, cancel)
@@ -353,6 +358,7 @@ func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *p
 				cancel()
 				atomic.AddInt32(&feasibleNodesLen, -1)
 			} else {
+				// 将 node 添加到 可行结点(feasibleNodes)列表
 				feasibleNodes[length-1] = nodeInfo.Node()
 			}
 		} else {
@@ -375,6 +381,7 @@ func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *p
 
 	// Stops searching for more nodes once the configured number of feasible nodes
 	// are found.
+	// 当找到配置的可行节点数后，停止搜索更多的节点, 调用 workqueue.ParallelizeUntil() 启动协程进行并行执行 checkNode
 	parallelize.Until(ctx, len(allNodes), checkNode)
 	processedNodes := int(feasibleNodesLen) + len(statuses)
 	g.nextStartNodeIndex = (g.nextStartNodeIndex + processedNodes) % len(allNodes)
@@ -389,6 +396,7 @@ func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *p
 
 // 查找可行的节点
 func (g *genericScheduler) findNodesThatPassExtenders(pod *v1.Pod, feasibleNodes []*v1.Node, statuses framework.NodeToStatusMap) ([]*v1.Node, error) {
+	// 遍历扩展器
 	for _, extender := range g.extenders {
 		if len(feasibleNodes) == 0 {
 			break
@@ -427,6 +435,7 @@ func addNominatedPods(ctx context.Context, ph framework.PreemptHandle, pod *v1.P
 		// This may happen only in tests.
 		return false, state, nodeInfo, nil
 	}
+	// 将node上的 nominatedPod 列举出来
 	nominatedPods := ph.NominatedPodsForNode(nodeInfo.Node().Name)
 	if len(nominatedPods) == 0 {
 		return false, state, nodeInfo, nil
@@ -435,6 +444,7 @@ func addNominatedPods(ctx context.Context, ph framework.PreemptHandle, pod *v1.P
 	stateOut := state.Clone()
 	podsAdded := false
 	for _, p := range nominatedPods {
+		// 选出比将要调度的pod Priority相等或者更高的 pod
 		if podutil.GetPodPriority(p) >= podutil.GetPodPriority(pod) && p.UID != pod.UID {
 			nodeInfoOut.AddPod(p)
 			status := ph.RunPreFilterExtensionAddPod(ctx, stateOut, pod, p, nodeInfoOut)
@@ -458,7 +468,9 @@ func addNominatedPods(ctx context.Context, ph framework.PreemptHandle, pod *v1.P
 // SelectVictimsOnNode(). Preempt removes victims from PreFilter state and
 // NodeInfo before calling this function.
 // TODO: move this out so that plugins don't need to depend on <core> pkg.
-// 检查 NodeInfo 给定的节点是否满足过滤器插件
+// 检查 NodeInfo 给定的节点是否满足过滤器插件。
+// 这个函数是从两个不同的地方调用的：Schedule（调度） 和 Preempt（抢占）。 当从 Schedule 调用它时，想要测试该 pod 是否可以在该节点上调度，该节点上的所有现有 pod 以及指定在该节点上运行的nominated pods(被录用的pods)更高且相等优先级的 pod。
+// 当从 Preempt 调用时，将会去掉将要驱逐的 preemption 的受害者并添加指定的 Pod。 受害者的移除由 SelectVictimsOnNode() 完成。 Preempt 在调用此函数之前从 PreFilter 状态和 NodeInfo 中删除受害者,在这里会执行两遍逻辑，其中主要是为了检查 nominated pods存在与否产生的不同结果。
 func PodPassesFiltersOnNode(
 	ctx context.Context,
 	ph framework.PreemptHandle,
@@ -525,6 +537,7 @@ func (g *genericScheduler) prioritizeNodes(
 ) (framework.NodeScoreList, error) {
 	// If no priority configs are provided, then all nodes will have a score of one.
 	// This is required to generate the priority list in the required format
+	// 如果没有提供优先级配置，那么所有节点的分数都是1。这是生成所需格式的优先级列表的必要条件
 	if len(g.extenders) == 0 && !prof.HasScorePlugins() {
 		result := make(framework.NodeScoreList, 0, len(nodes))
 		for i := range nodes {

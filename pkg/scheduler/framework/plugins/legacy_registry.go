@@ -40,46 +40,59 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/volumezone"
 )
 
-// 在 createFromConfig 初始化注册
+// 在 createFromConfig 初始化注册  定义了优先级函数
 const (
 	// EqualPriority defines the name of prioritizer function that gives an equal weight of one to all nodes.
+	// 定义优先排序器函数的名称，该函数为所有节点赋予相等的权重1
 	EqualPriority = "EqualPriority"
 	// MostRequestedPriority defines the name of prioritizer function that gives used nodes higher priority.
+	// 定义优先排序器函数的名称，该函数为使用的节点提供更高的优先级
 	MostRequestedPriority = "MostRequestedPriority"
 	// RequestedToCapacityRatioPriority defines the name of RequestedToCapacityRatioPriority.
+	// 定义 requestdtocapacityratiopriority 的名称
 	RequestedToCapacityRatioPriority = "RequestedToCapacityRatioPriority"
 	// SelectorSpreadPriority defines the name of prioritizer function that spreads pods by minimizing
 	// the number of pods (belonging to the same service or replication controller) on the same node.
+	// 定义优先级函数的名称，通过最小化同一节点上的 pod（属于同一服务或复制控制器）的数量来扩展 pod
 	SelectorSpreadPriority = "SelectorSpreadPriority"
 	// ServiceSpreadingPriority is largely replaced by "SelectorSpreadPriority".
+	// 被 "SelectorSpreadPriority" 取代
 	ServiceSpreadingPriority = "ServiceSpreadingPriority"
 	// InterPodAffinityPriority defines the name of prioritizer function that decides which pods should or
 	// should not be placed in the same topological domain as some other pods.
+	// 定义优先级函数的名称，该函数决定哪些 pod 应该或不应该放置在与其他一些 pod 相同的拓扑域中
 	InterPodAffinityPriority = "InterPodAffinityPriority"
 	// LeastRequestedPriority defines the name of prioritizer function that prioritize nodes by least
 	// requested utilization.
+	// 定义了优先级函数的名称，该函数按照最小请求利用率对节点进行优先级排序。
 	LeastRequestedPriority = "LeastRequestedPriority"
 	// BalancedResourceAllocation defines the name of prioritizer function that prioritizes nodes
 	// to help achieve balanced resource usage.
+	// 定义优先级函数的名称，该函数对节点进行优先级排序以帮助实现平衡的资源使用
 	BalancedResourceAllocation = "BalancedResourceAllocation"
 	// NodePreferAvoidPodsPriority defines the name of prioritizer function that priorities nodes according to
 	// the node annotation "scheduler.alpha.kubernetes.io/preferAvoidPods".
+	// 定义优先级函数的名称，该函数根据节点注解 "scheduler.alpha.kubernetes.io/preferAvoidPods" 确定节点的优先级。
 	NodePreferAvoidPodsPriority = "NodePreferAvoidPodsPriority"
 	// NodeAffinityPriority defines the name of prioritizer function that prioritizes nodes which have labels
 	// matching NodeAffinity.
+	// 定义优先级函数的名称，该函数对具有与 NodeAffinity 匹配的标签的节点进行优先级排序
 	NodeAffinityPriority = "NodeAffinityPriority"
 	// TaintTolerationPriority defines the name of prioritizer function that prioritizes nodes that marked
 	// with taint which pod can tolerate.
+	// 定义优先级函数的名称，该函数对标记为污染(taint)的节点进行优先级排序
 	TaintTolerationPriority = "TaintTolerationPriority"
 	// ImageLocalityPriority defines the name of prioritizer function that prioritizes nodes that have images
 	// requested by the pod present.
+	// 定义优先级函数的名称，该函数对存在 pod 请求的镜像的节点进行优先级排序
 	ImageLocalityPriority = "ImageLocalityPriority"
 	// EvenPodsSpreadPriority defines the name of prioritizer function that prioritizes nodes
 	// which have pods and labels matching the incoming pod's topologySpreadConstraints.
+	// 定义优先排序器函数的名称，该函数对具有与传入pod的拓扑结构(topologySpreadConstraints)匹配的pod和标签的节点进行优先排序
 	EvenPodsSpreadPriority = "EvenPodsSpreadPriority"
 )
 
-// 谓词宏定义
+// 谓词(predicate)宏定义
 const (
 	// MatchInterPodAffinityPred defines the name of predicate MatchInterPodAffinity.
 	MatchInterPodAffinityPred = "MatchInterPodAffinity"
@@ -132,6 +145,7 @@ const (
 )
 
 // PredicateOrdering returns the ordering of predicate execution.
+// 返回谓词执行的顺序
 func PredicateOrdering() []string {
 	return []string{CheckNodeUnschedulablePred,
 		GeneralPred, HostNamePred, PodFitsHostPortsPred,
@@ -143,14 +157,18 @@ func PredicateOrdering() []string {
 }
 
 // LegacyRegistry is used to store current state of registered predicates and priorities.
+// 用于存储已注册谓词和优先级的当前状态
 type LegacyRegistry struct {
 	// maps that associate predicates/priorities with framework plugin configurations.
-	PredicateToConfigProducer map[string]ConfigProducer
-	PriorityToConfigProducer  map[string]ConfigProducer
+	// 将谓词/优先级与框架插件配置相关联的映射
+	PredicateToConfigProducer map[string]ConfigProducer // 谓词插件映射表
+	PriorityToConfigProducer  map[string]ConfigProducer // 优先选择插件映射表
 	// predicates that will always be configured.
+	// 必须配置的谓词
 	MandatoryPredicates sets.String
 	// predicates and priorities that will be used if either was set to nil in a
 	// given v1.Policy configuration.
+	// 如果在给定的v1.Policy配置中任何一个被设置为nil，将使用默认的谓词和优先级。
 	DefaultPredicates sets.String
 	DefaultPriorities map[string]int64
 }
@@ -158,23 +176,31 @@ type LegacyRegistry struct {
 // ConfigProducerArgs contains arguments that are passed to the producer.
 // As we add more predicates/priorities to framework plugins mappings, more arguments
 // may be added here.
+// 包含传递给生产者的参数。当在框架插件的映射中添加更多的谓词/优先级时，可能会在这里添加更多的参数
 type ConfigProducerArgs struct {
 	// Weight used for priority functions.
+	// 用于优先级(priority)函数
 	Weight int32
 	// NodeLabelArgs is the args for the NodeLabel plugin.
+	// NodeLabel 插件的参数
 	NodeLabelArgs *config.NodeLabelArgs
 	// RequestedToCapacityRatioArgs is the args for the RequestedToCapacityRatio plugin.
+	// requestdtocapacityratio 插件的参数
 	RequestedToCapacityRatioArgs *config.RequestedToCapacityRatioArgs
 	// ServiceAffinityArgs is the args for the ServiceAffinity plugin.
+	// ServiceAffinity 插件的参数
 	ServiceAffinityArgs *config.ServiceAffinityArgs
 	// NodeResourcesFitArgs is the args for the NodeResources fit filter.
+	// NodeResources 适配过滤器的参数
 	NodeResourcesFitArgs *config.NodeResourcesFitArgs
 	// InterPodAffinityArgs is the args for InterPodAffinity plugin
+	// InterPodAffinity 插件的参数
 	InterPodAffinityArgs *config.InterPodAffinityArgs
 }
 
 // ConfigProducer returns the set of plugins and their configuration for a
 // predicate/priority given the args.
+// 在给定参数的情况下返回谓词/优先级的插件集及其配置; 在 NewLegacyRegistry() 的 registry.registerPredicateConfigProducer() 中被赋值
 type ConfigProducer func(args ConfigProducerArgs) (config.Plugins, []config.PluginConfig)
 
 // NewLegacyRegistry returns a legacy algorithm registry of predicates and priorities.
@@ -183,12 +209,16 @@ func NewLegacyRegistry() *LegacyRegistry {
 	registry := &LegacyRegistry{
 		// MandatoryPredicates the set of keys for predicates that the scheduler will
 		// be configured with all the time.
+		// 调度程序将始终配置的谓词的键集
 		MandatoryPredicates: sets.NewString(
+			// Pod 容忍节点污染
 			PodToleratesNodeTaintsPred,
+			// 检查节点不可调度
 			CheckNodeUnschedulablePred,
 		),
 
 		// Used as the default set of predicates if Policy was specified, but predicates was nil.
+		// 如果指定了 Policy，但 predicates 为 nil，则作为默认的 predicates 集使用。
 		DefaultPredicates: sets.NewString(
 			NoVolumeZoneConflictPred,
 			MaxEBSVolumeCountPred,
@@ -205,6 +235,7 @@ func NewLegacyRegistry() *LegacyRegistry {
 		),
 
 		// Used as the default set of predicates if Policy was specified, but priorities was nil.
+		// 如果指定了 Policy，但 priorities 为 nil，则作为默认的 priorities 集使用
 		DefaultPriorities: map[string]int64{
 			SelectorSpreadPriority:      1,
 			InterPodAffinityPriority:    1,
@@ -221,6 +252,9 @@ func NewLegacyRegistry() *LegacyRegistry {
 		PriorityToConfigProducer:  make(map[string]ConfigProducer),
 	}
 
+	// 设置谓词/优选中各个插件的权重占比
+	// 谓词注册
+	// 常规
 	registry.registerPredicateConfigProducer(GeneralPred,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			// GeneralPredicate is a combination of predicates.
@@ -236,11 +270,13 @@ func NewLegacyRegistry() *LegacyRegistry {
 			plugins.Filter = appendToPluginSet(plugins.Filter, nodeaffinity.Name, nil)
 			return
 		})
+	// 污点
 	registry.registerPredicateConfigProducer(PodToleratesNodeTaintsPred,
 		func(_ ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, tainttoleration.Name, nil)
 			return
 		})
+	// 资源
 	registry.registerPredicateConfigProducer(PodFitsResourcesPred,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, noderesources.FitName, nil)
@@ -251,27 +287,32 @@ func NewLegacyRegistry() *LegacyRegistry {
 			}
 			return
 		})
+	// 主机名
 	registry.registerPredicateConfigProducer(HostNamePred,
 		func(_ ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, nodename.Name, nil)
 			return
 		})
+	// 主机端口
 	registry.registerPredicateConfigProducer(PodFitsHostPortsPred,
 		func(_ ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, nodeports.Name, nil)
 			plugins.PreFilter = appendToPluginSet(plugins.PreFilter, nodeports.Name, nil)
 			return
 		})
+	// 匹配节点
 	registry.registerPredicateConfigProducer(MatchNodeSelectorPred,
 		func(_ ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, nodeaffinity.Name, nil)
 			return
 		})
+	// 不可调度节点
 	registry.registerPredicateConfigProducer(CheckNodeUnschedulablePred,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, nodeunschedulable.Name, nil)
 			return
 		})
+	// 磁盘
 	registry.registerPredicateConfigProducer(CheckVolumeBindingPred,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.PreFilter = appendToPluginSet(plugins.PreFilter, volumebinding.Name, nil)
@@ -280,16 +321,19 @@ func NewLegacyRegistry() *LegacyRegistry {
 			plugins.PreBind = appendToPluginSet(plugins.PreBind, volumebinding.Name, nil)
 			return
 		})
+	// 不存在磁盘冲突
 	registry.registerPredicateConfigProducer(NoDiskConflictPred,
 		func(_ ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, volumerestrictions.Name, nil)
 			return
 		})
+	// 无卷区冲突
 	registry.registerPredicateConfigProducer(NoVolumeZoneConflictPred,
 		func(_ ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, volumezone.Name, nil)
 			return
 		})
+	// 最大的CSI容量数
 	registry.registerPredicateConfigProducer(MaxCSIVolumeCountPred,
 		func(_ ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, nodevolumelimits.CSIName, nil)
@@ -315,12 +359,14 @@ func NewLegacyRegistry() *LegacyRegistry {
 			plugins.Filter = appendToPluginSet(plugins.Filter, nodevolumelimits.CinderName, nil)
 			return
 		})
+	// 匹配 Pod 间亲和力
 	registry.registerPredicateConfigProducer(MatchInterPodAffinityPred,
 		func(_ ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, interpodaffinity.Name, nil)
 			plugins.PreFilter = appendToPluginSet(plugins.PreFilter, interpodaffinity.Name, nil)
 			return
 		})
+	// 检查节点标签是否存在
 	registry.registerPredicateConfigProducer(CheckNodeLabelPresencePred,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, nodelabel.Name, nil)
@@ -330,6 +376,7 @@ func NewLegacyRegistry() *LegacyRegistry {
 			}
 			return
 		})
+	// 检查服务关联性
 	registry.registerPredicateConfigProducer(CheckServiceAffinityPred,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, serviceaffinity.Name, nil)
@@ -340,6 +387,7 @@ func NewLegacyRegistry() *LegacyRegistry {
 			plugins.PreFilter = appendToPluginSet(plugins.PreFilter, serviceaffinity.Name, nil)
 			return
 		})
+	// pod 水平扩展
 	registry.registerPredicateConfigProducer(EvenPodsSpreadPred,
 		func(_ ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.PreFilter = appendToPluginSet(plugins.PreFilter, podtopologyspread.Name, nil)
@@ -347,29 +395,35 @@ func NewLegacyRegistry() *LegacyRegistry {
 			return
 		})
 
+	// 优先级注册
 	// Register Priorities.
+	// 通过最小化同一节点上的 pod（属于同一服务或复制控制器）的数量来扩展 pod
 	registry.registerPriorityConfigProducer(SelectorSpreadPriority,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Score = appendToPluginSet(plugins.Score, selectorspread.Name, &args.Weight)
 			plugins.PreScore = appendToPluginSet(plugins.PreScore, selectorspread.Name, nil)
 			return
 		})
+	// 对标记为污染(taint)的节点进行优先级排序
 	registry.registerPriorityConfigProducer(TaintTolerationPriority,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.PreScore = appendToPluginSet(plugins.PreScore, tainttoleration.Name, nil)
 			plugins.Score = appendToPluginSet(plugins.Score, tainttoleration.Name, &args.Weight)
 			return
 		})
+	// 对具有与 NodeAffinity 匹配的标签的节点进行优先级排序
 	registry.registerPriorityConfigProducer(NodeAffinityPriority,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Score = appendToPluginSet(plugins.Score, nodeaffinity.Name, &args.Weight)
 			return
 		})
+	// 对存在 pod 请求的镜像的节点进行优先级排序
 	registry.registerPriorityConfigProducer(ImageLocalityPriority,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Score = appendToPluginSet(plugins.Score, imagelocality.Name, &args.Weight)
 			return
 		})
+	// 决定哪些 pod 应该或不应该放置在与其他一些 pod 相同的拓扑域中
 	registry.registerPriorityConfigProducer(InterPodAffinityPriority,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.PreScore = appendToPluginSet(plugins.PreScore, interpodaffinity.Name, nil)
@@ -380,26 +434,31 @@ func NewLegacyRegistry() *LegacyRegistry {
 			}
 			return
 		})
+	// 根据节点注解 "scheduler.alpha.kubernetes.io/preferAvoidPods" 确定节点的优先级
 	registry.registerPriorityConfigProducer(NodePreferAvoidPodsPriority,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Score = appendToPluginSet(plugins.Score, nodepreferavoidpods.Name, &args.Weight)
 			return
 		})
+	// 使用的节点提供更高的优先
 	registry.registerPriorityConfigProducer(MostRequestedPriority,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Score = appendToPluginSet(plugins.Score, noderesources.MostAllocatedName, &args.Weight)
 			return
 		})
+	// 对节点进行优先级排序以帮助实现平衡的资源使用
 	registry.registerPriorityConfigProducer(BalancedResourceAllocation,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Score = appendToPluginSet(plugins.Score, noderesources.BalancedAllocationName, &args.Weight)
 			return
 		})
+	// 按照最小请求利用率对节点进行优先级排序
 	registry.registerPriorityConfigProducer(LeastRequestedPriority,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Score = appendToPluginSet(plugins.Score, noderesources.LeastAllocatedName, &args.Weight)
 			return
 		})
+	// 请求容量比
 	registry.registerPriorityConfigProducer(noderesources.RequestedToCapacityRatioName,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Score = appendToPluginSet(plugins.Score, noderesources.RequestedToCapacityRatioName, &args.Weight)
@@ -409,6 +468,7 @@ func NewLegacyRegistry() *LegacyRegistry {
 			}
 			return
 		})
+	// 节点标签
 	registry.registerPriorityConfigProducer(nodelabel.Name,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			// If there are n LabelPreference priorities in the policy, the weight for the corresponding
@@ -422,6 +482,7 @@ func NewLegacyRegistry() *LegacyRegistry {
 			}
 			return
 		})
+	// 服务亲和性
 	registry.registerPriorityConfigProducer(serviceaffinity.Name,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			// If there are n ServiceAffinity priorities in the policy, the weight for the corresponding
@@ -435,6 +496,7 @@ func NewLegacyRegistry() *LegacyRegistry {
 			}
 			return
 		})
+	// 对具有与传入pod的拓扑结构(topologySpreadConstraints)匹配的pod和标签的节点进行优先排序
 	registry.registerPriorityConfigProducer(EvenPodsSpreadPriority,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.PreScore = appendToPluginSet(plugins.PreScore, podtopologyspread.Name, nil)
@@ -462,6 +524,7 @@ func (lr *LegacyRegistry) registerPriorityConfigProducer(name string, producer C
 	lr.PriorityToConfigProducer[name] = producer
 }
 
+// 设置插件集合中对应插件的权重占比
 func appendToPluginSet(set *config.PluginSet, name string, weight *int32) *config.PluginSet {
 	if set == nil {
 		set = &config.PluginSet{}
@@ -533,7 +596,9 @@ func (lr *LegacyRegistry) ProcessPredicatePolicy(policy config.PredicatePolicy, 
 
 // ProcessPriorityPolicy given a PriorityPolicy, return the plugin name implementing the priority and update
 // the ConfigProducerArgs if necessary.
+// 给定一个 PriorityPolicy，返回实现优先级的插件名称，并在必要时更新 ConfigProducerArgs
 func (lr *LegacyRegistry) ProcessPriorityPolicy(policy config.PriorityPolicy, configProducerArgs *ConfigProducerArgs) string {
+	// 验证优选有效性
 	validatePriorityOrDie(policy)
 
 	priorityName := policy.Name
@@ -620,6 +685,7 @@ func (lr *LegacyRegistry) ProcessPriorityPolicy(policy config.PriorityPolicy, co
 	return priorityName
 }
 
+// 验证谓词的有效性
 func validatePredicateOrDie(predicate config.PredicatePolicy) {
 	if predicate.Argument != nil {
 		numArgs := 0
@@ -635,6 +701,7 @@ func validatePredicateOrDie(predicate config.PredicatePolicy) {
 	}
 }
 
+// 验证优选的有效性
 func validatePriorityOrDie(priority config.PriorityPolicy) {
 	if priority.Argument != nil {
 		numArgs := 0

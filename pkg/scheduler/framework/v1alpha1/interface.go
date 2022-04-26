@@ -211,6 +211,7 @@ type WaitingPod interface {
 }
 
 // Plugin is the parent type for all the scheduling framework plugins.
+// 所有调度框架插件的父类型
 type Plugin interface {
 	Name() string
 }
@@ -230,9 +231,11 @@ type QueueSortPlugin interface {
 // PreFilterExtensions is an interface that is included in plugins that allow specifying
 // callbacks to make incremental updates to its supposedly pre-calculated
 // state.
+// 插件中包含的接口，允许指定回调以对其所谓的预先计算的状态进行增量更新
 type PreFilterExtensions interface {
 	// AddPod is called by the framework while trying to evaluate the impact
 	// of adding podToAdd to the node while scheduling podToSchedule.
+	// AddPod 被框架调用，同时试图评估在调度 podToSchedule 时向节点添加 podToAdd 的影响
 	AddPod(ctx context.Context, state *CycleState, podToSchedule *v1.Pod, podToAdd *v1.Pod, nodeInfo *NodeInfo) *Status
 	// RemovePod is called by the framework while trying to evaluate the impact
 	// of removing podToRemove from the node while scheduling podToSchedule.
@@ -241,10 +244,12 @@ type PreFilterExtensions interface {
 
 // PreFilterPlugin is an interface that must be implemented by "prefilter" plugins.
 // These plugins are called at the beginning of the scheduling cycle.
+// 一个接口，必须由 "预过滤器（prefilter）"插件实现。这些插件在调度周期的开始被调用
 type PreFilterPlugin interface {
 	Plugin
 	// PreFilter is called at the beginning of the scheduling cycle. All PreFilter
 	// plugins must return success or the pod will be rejected.
+	// 在调度周期开始时调用。 所有 PreFilter 插件都必须返回成功，否则 pod 将被拒绝
 	PreFilter(ctx context.Context, state *CycleState, p *v1.Pod) *Status
 	// PreFilterExtensions returns a PreFilterExtensions interface if the plugin implements one,
 	// or nil if it does not. A Pre-filter plugin can provide extensions to incrementally
@@ -252,6 +257,8 @@ type PreFilterPlugin interface {
 	// AddPod/RemovePod will only be called after PreFilter, possibly on a cloned
 	// CycleState, and may call those functions more than once before calling
 	// Filter again on a specific node.
+	// 如果该插件实现了一个 PreFilterExtensions 接口，则返回一个 PreFilterExtensions 接口，如果没有则返回nil。一个前置过滤器插件可以提供扩展来逐步修改其预处理的信息。
+	// 该框架保证扩展 AddPod/RemovePod 只会在 PreFilter 之后被调用，可能是在一个克隆的 CycleState 上，并且在对特定节点再次调用 Filter 之前可能会多次调用这些函数
 	PreFilterExtensions() PreFilterExtensions
 }
 
@@ -490,15 +497,19 @@ type Framework interface {
 	RunBindPlugins(ctx context.Context, state *CycleState, pod *v1.Pod, nodeName string) *Status
 
 	// HasFilterPlugins returns true if at least one filter plugin is defined.
+	// 如果至少定义了一个过滤器插件，则返回true
 	HasFilterPlugins() bool
 
 	// HasPostFilterPlugins returns true if at least one postFilter plugin is defined.
+	// 如果至少定义了一个postFilter插件，则返回true
 	HasPostFilterPlugins() bool
 
 	// HasScorePlugins returns true if at least one score plugin is defined.
+	// 如果至少定义了一个score插件，则返回true
 	HasScorePlugins() bool
 
 	// ListPlugins returns a map of extension point name to list of configured Plugins.
+	// 返回扩展点名称到已配置插件列表的映射
 	ListPlugins() map[string][]config.Plugin
 }
 
@@ -552,6 +563,7 @@ type PreemptHandle interface {
 }
 
 // PodNominator abstracts operations to maintain nominated Pods.
+// 抽象维护指定Pods的操作
 type PodNominator interface {
 	// AddNominatedPod adds the given pod to the nominated pod map or
 	// updates it if it already exists.
@@ -561,6 +573,7 @@ type PodNominator interface {
 	// UpdateNominatedPod updates the <oldPod> with <newPod>.
 	UpdateNominatedPod(oldPod, newPod *v1.Pod)
 	// NominatedPodsForNode returns nominatedPods on the given node.
+	// 返回指定节点上的 nomatedpods
 	NominatedPodsForNode(nodeName string) []*v1.Pod
 }
 
@@ -571,6 +584,7 @@ type PluginsRunner interface {
 	// RunFilterPlugins runs the set of configured filter plugins for pod on the given node.
 	RunFilterPlugins(context.Context, *CycleState, *v1.Pod, *NodeInfo) PluginToStatus
 	// RunPreFilterExtensionAddPod calls the AddPod interface for the set of configured PreFilter plugins.
+	// 为已配置的PreFilter插件集调用AddPod接口
 	RunPreFilterExtensionAddPod(ctx context.Context, state *CycleState, podToSchedule *v1.Pod, podToAdd *v1.Pod, nodeInfo *NodeInfo) *Status
 	// RunPreFilterExtensionRemovePod calls the RemovePod interface for the set of configured PreFilter plugins.
 	RunPreFilterExtensionRemovePod(ctx context.Context, state *CycleState, podToSchedule *v1.Pod, podToRemove *v1.Pod, nodeInfo *NodeInfo) *Status

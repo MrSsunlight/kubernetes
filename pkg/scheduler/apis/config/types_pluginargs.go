@@ -24,6 +24,7 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // InterPodAffinityArgs holds arguments used to configure the InterPodAffinity plugin.
+// 保存用于配置 InterPodAffinity 插件的参数
 type InterPodAffinityArgs struct {
 	metav1.TypeMeta
 
@@ -35,6 +36,7 @@ type InterPodAffinityArgs struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // NodeLabelArgs holds arguments used to configure the NodeLabel plugin.
+// 保存用于配置 NodeLabel 插件的参数
 type NodeLabelArgs struct {
 	metav1.TypeMeta
 
@@ -51,6 +53,7 @@ type NodeLabelArgs struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // NodeResourcesFitArgs holds arguments used to configure the NodeResourcesFit plugin.
+// 保存用于配置 NodeResourcesFit 插件的参数
 type NodeResourcesFitArgs struct {
 	metav1.TypeMeta
 
@@ -150,6 +153,7 @@ type ServiceAffinityArgs struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // VolumeBindingArgs holds arguments used to configure the VolumeBinding plugin.
+// 保存用于配置 VolumeBinding 插件的参数
 type VolumeBindingArgs struct {
 	metav1.TypeMeta
 

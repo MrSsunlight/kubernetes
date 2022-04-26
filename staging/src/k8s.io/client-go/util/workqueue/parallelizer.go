@@ -43,6 +43,7 @@ func WithChunkSize(c int) func(*options) {
 
 // ParallelizeUntil is a framework that allows for parallelizing N
 // independent pieces of work until done or the context is canceled.
+// 一个框架，允许并行化 N 个独立的工作，直到完成或取消上下文; pkg/scheduler/internal/parallelize/parallelism.go --> workqueue.ParallelizeUntil()中被调用
 func ParallelizeUntil(ctx context.Context, workers, pieces int, doWorkPiece DoWorkPieceFunc, opts ...Options) {
 	if pieces == 0 {
 		return

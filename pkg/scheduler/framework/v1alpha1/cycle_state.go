@@ -59,6 +59,7 @@ func NewCycleState() *CycleState {
 }
 
 // ShouldRecordPluginMetrics returns whether PluginExecutionDuration metrics should be recorded.
+// 返回是否应该记录 PluginExecutionDuration(插件执行持续时间) 指标
 func (c *CycleState) ShouldRecordPluginMetrics() bool {
 	if c == nil {
 		return false

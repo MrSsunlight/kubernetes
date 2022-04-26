@@ -241,6 +241,7 @@ func (c *Configurator) createFromProvider(providerName string) (*Scheduler, erro
 func (c *Configurator) createFromConfig(policy schedulerapi.Policy) (*Scheduler, error) {
 	// 谓词算法注册
 	lr := frameworkplugins.NewLegacyRegistry()
+	// 包含传递给生产者的谓词或优选插件的参数
 	args := &frameworkplugins.ConfigProducerArgs{}
 
 	klog.V(2).Infof("Creating scheduler from configuration: %v", policy)
@@ -256,6 +257,7 @@ func (c *Configurator) createFromConfig(policy schedulerapi.Policy) (*Scheduler,
 		klog.V(2).Infof("Using predicates from algorithm provider '%v'", schedulerapi.SchedulerDefaultProviderName)
 		predicateKeys = lr.DefaultPredicates
 	} else {
+		// 谓词
 		for _, predicate := range policy.Predicates {
 			klog.V(2).Infof("Registering predicate: %s", predicate.Name)
 			predicateKeys.Insert(lr.ProcessPredicatePolicy(predicate, args))
@@ -267,6 +269,7 @@ func (c *Configurator) createFromConfig(policy schedulerapi.Policy) (*Scheduler,
 		klog.V(2).Infof("Using default priorities")
 		priorityKeys = lr.DefaultPriorities
 	} else {
+		// 优先级
 		for _, priority := range policy.Priorities {
 			if priority.Name == frameworkplugins.EqualPriority {
 				klog.V(2).Infof("Skip registering priority: %s", priority.Name)
