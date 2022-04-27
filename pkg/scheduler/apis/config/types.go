@@ -269,6 +269,7 @@ func appendPluginSet(dst *PluginSet, src *PluginSet) *PluginSet {
 
 // Append appends src Plugins to current Plugins. If a PluginSet is nil, it will
 // be created.
+// 将src Plugins追加到当前Plugins中。如果 PluginSet 是空的，它将被创建。
 func (p *Plugins) Append(src *Plugins) {
 	if p == nil || src == nil {
 		return

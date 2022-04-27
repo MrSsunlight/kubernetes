@@ -329,7 +329,7 @@ func getRecorderFactory(cc *schedulerserverconfig.CompletedConfig) profile.Recor
 
 // WithPlugin creates an Option based on plugin name and factory. Please don't remove this function: it is used to register out-of-tree plugins,
 // hence there are no references to it from the kubernetes scheduler code base.
-// WithPlugin 根据 plugin 的名称和 factory 创建一个 Option。请不要删除这个函数：它被用来注册列表外的插件，因此在kubernetes调度器的代码库中没有对它的引用。
+// 根据 plugin 的名称和 factory 创建一个 Option。请不要删除这个函数：它被用来注册列表外的插件，因此在kubernetes调度器的代码库中没有对它的引用。
 func WithPlugin(name string, factory runtime.PluginFactory) Option {
 	return func(registry runtime.Registry) error {
 		return registry.Register(name, factory)
@@ -375,7 +375,7 @@ func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions 
 		scheduler.WithProfiles(cc.ComponentConfig.Profiles...),                              // 为调度器设置配置文件
 		scheduler.WithAlgorithmSource(cc.ComponentConfig.AlgorithmSource),                   // 设置Scheduler的 调度算法源
 		scheduler.WithPercentageOfNodesToScore(cc.ComponentConfig.PercentageOfNodesToScore), // 设置节点 node 得分百分比
-		scheduler.WithFrameworkOutOfTreeRegistry(outOfTreeRegistry),                         // 为列表外的插件设置注册表。这些插件 将被追加到默认注册表中。
+		scheduler.WithFrameworkOutOfTreeRegistry(outOfTreeRegistry),                         // 为列表外的插件设置注册表。这些插件 将被追加到默认注册表中。（默认插件在 NewInTreeRegistry 注册）
 		scheduler.WithPodMaxBackoffSeconds(cc.ComponentConfig.PodMaxBackoffSeconds),         // 设置 podMaxBackoffSeconds，默认值为10
 		scheduler.WithPodInitialBackoffSeconds(cc.ComponentConfig.PodInitialBackoffSeconds), // 设置 podInitialBackoffSeconds，默认值为1
 		scheduler.WithExtenders(cc.ComponentConfig.Extenders...),                            // 为Scheduler设置扩展程序

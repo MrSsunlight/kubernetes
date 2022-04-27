@@ -224,7 +224,7 @@ func New(client clientset.Interface,
 	// 创建调度器缓存过期处理函数
 	schedulerCache := internalcache.New(30*time.Second, stopEverything)
 
-	// 建立注册表
+	// 建立插件注册表
 	registry := frameworkplugins.NewInTreeRegistry()
 	if err := registry.Merge(options.frameworkOutOfTreeRegistry); err != nil {
 		return nil, err
