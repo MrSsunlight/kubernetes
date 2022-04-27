@@ -216,7 +216,7 @@ func (c *Configurator) create() (*Scheduler, error) {
 }
 
 // createFromProvider creates a scheduler from the name of a registered algorithm provider.
-// createFromProvider 根据注册的算法提供者的名字创建一个调度器
+// 根据注册的算法提供者的名字创建一个调度器
 func (c *Configurator) createFromProvider(providerName string) (*Scheduler, error) {
 	klog.V(2).Infof("Creating scheduler from algorithm provider '%v'", providerName)
 	r := algorithmprovider.NewRegistry()

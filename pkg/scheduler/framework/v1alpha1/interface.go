@@ -449,12 +449,14 @@ type Framework interface {
 
 	// RunPreScorePlugins runs the set of configured pre-score plugins. If any
 	// of these plugins returns any status other than "Success", the given pod is rejected.
+	// 运行已配置的预评分插件集。如果这些插件中的任何一个返回“Success”以外的任何状态，那么给定的pod就会被拒绝
 	RunPreScorePlugins(ctx context.Context, state *CycleState, pod *v1.Pod, nodes []*v1.Node) *Status
 
 	// RunScorePlugins runs the set of configured scoring plugins. It returns a map that
 	// stores for each scoring plugin name the corresponding NodeScoreList(s).
 	// It also returns *Status, which is set to non-success if any of the plugins returns
 	// a non-success status.
+	// 运行一组配置的评分插件。它返回一个映射，为每个得分插件名称存储相应的NodeScoreList(s)。它还返回*Status，如果任何插件返回不成功状态，则将其设置为不成功
 	RunScorePlugins(ctx context.Context, state *CycleState, pod *v1.Pod, nodes []*v1.Node) (PluginToNodeScores, *Status)
 
 	// RunPreBindPlugins runs the set of configured prebind plugins. It returns

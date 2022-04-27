@@ -51,7 +51,7 @@ const ClusterAutoscalerProvider = "ClusterAutoscalerProvider"
 type Registry map[string]*schedulerapi.Plugins
 
 // NewRegistry returns an algorithm provider registry instance.
-// NewRegistry 返回一个算法提供程序注册表实例
+// 返回一个算法提供程序注册表实例
 func NewRegistry() Registry {
 	// 获取默认插件列表
 	defaultConfig := getDefaultConfig()

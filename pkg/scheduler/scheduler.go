@@ -256,9 +256,11 @@ func New(client clientset.Interface,
 	var sched *Scheduler
 	// 调度程序算法的源
 	source := options.schedulerAlgorithmSource
+	klog.V(2).Infof("调度程序算法的源: Provider:%v\tPolicy:%v\n", source.Provider, source.Policy)
 	switch {
 	// 提供者 不为空
 	case source.Provider != nil:
+		klog.V(2).Infof("从指定的算法提供程序创建配置")
 		// Create the config from a named algorithm provider.
 		// 从指定的算法提供程序创建配置
 		sc, err := configurator.createFromProvider(*source.Provider)
@@ -268,15 +270,18 @@ func New(client clientset.Interface,
 		sched = sc
 	// 策略不为空
 	case source.Policy != nil:
+		klog.V(2).Infof("从用户指定的策略源创建配置")
 		// Create the config from a user specified policy source.
 		// 从用户指定的策略源创建配置
 		policy := &schedulerapi.Policy{}
 		switch {
 		case source.Policy.File != nil:
+			klog.V(2).Infof("文件 策略")
 			if err := initPolicyFromFile(source.Policy.File.Path, policy); err != nil {
 				return nil, err
 			}
 		case source.Policy.ConfigMap != nil:
+			klog.V(2).Infof("configmap 策略")
 			if err := initPolicyFromConfigMap(client, source.Policy.ConfigMap, policy); err != nil {
 				return nil, err
 			}

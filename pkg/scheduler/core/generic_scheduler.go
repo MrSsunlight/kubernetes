@@ -550,19 +550,20 @@ func (g *genericScheduler) prioritizeNodes(
 	}
 
 	// Run PreScore plugins.
-	// 4. score，比如处理弱亲和性，将preferredAffinity语法进行解析
+	// 4. score，比如处理弱亲和性，将preferredAffinity语法进行解析; 预评分插件集
 	preScoreStatus := prof.RunPreScorePlugins(ctx, state, pod, nodes)
 	if !preScoreStatus.IsSuccess() {
 		return nil, preScoreStatus.AsError()
 	}
 
 	// Run the Score plugins.
-	// 5. 为节点打分
+	// 5. 为节点打分; 评分插件集
 	scoresMap, scoreStatus := prof.RunScorePlugins(ctx, state, pod, nodes)
 	if !scoreStatus.IsSuccess() {
 		return nil, scoreStatus.AsError()
 	}
 
+	// 输出插件集的评分
 	if klog.V(10).Enabled() {
 		for plugin, nodeScoreList := range scoresMap {
 			klog.Infof("Plugin %s scores on %v/%v => %v", plugin, pod.Namespace, pod.Name, nodeScoreList)
@@ -599,6 +600,7 @@ func (g *genericScheduler) prioritizeNodes(
 				prioritizedList, weight, err := g.extenders[extIndex].Prioritize(pod, nodes)
 				if err != nil {
 					// Prioritization errors from extender can be ignored, let k8s/other extenders determine the priorities
+					// 可以忽略扩展器的优先级错误，让 k8s/other 扩展器确定优先级
 					return
 				}
 				mu.Lock()
@@ -613,14 +615,17 @@ func (g *genericScheduler) prioritizeNodes(
 			}(i)
 		}
 		// wait for all go routines to finish
+		// 等待所有的动作完成
 		wg.Wait()
 		for i := range result {
 			// MaxExtenderPriority may diverge from the max priority used in the scheduler and defined by MaxNodeScore,
 			// therefore we need to scale the score returned by extenders to the score range used by the scheduler.
+			// MaxExtenderPriority 可能会偏离调度程序中由 MaxNodeScore 定义使用的最大优先级，因此需要将扩展程序返回的分数缩放到调度程序使用的分数范围
 			result[i].Score += combinedScores[result[i].Name] * (framework.MaxNodeScore / extenderv1.MaxExtenderPriority)
 		}
 	}
 
+	// 输出所有主机得分
 	if klog.V(10).Enabled() {
 		for i := range result {
 			klog.Infof("Host %s => Score %d", result[i].Name, result[i].Score)
