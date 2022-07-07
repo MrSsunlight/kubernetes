@@ -201,7 +201,7 @@ var defaultSchedulerOptions = schedulerOptions{
 }
 
 // New returns a Scheduler
-// New 返回一个调度器
+// 返回一个调度器
 func New(client clientset.Interface,
 	informerFactory informers.SharedInformerFactory,
 	podInformer coreinformers.PodInformer,

@@ -252,7 +252,7 @@ func emptySchedulerProfileConfig(profiles []kubeschedulerconfig.KubeSchedulerPro
 }
 
 // Validate validates all the required options.
-// Validate验证所有必需的选项
+// 证所有必需的选项
 func (o *Options) Validate() []error {
 	var errs []error
 
@@ -330,7 +330,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 
 // makeLeaderElectionConfig builds a leader election configuration. It will
 // create a new resource lock associated with the configuration.
-// makeLeaderElectionConfig 构建一个leader选举配置。它将创建一个与配置关联的新资源锁
+// 构建一个leader选举配置。它将创建一个与配置关联的新资源锁
 func makeLeaderElectionConfig(config componentbaseconfig.LeaderElectionConfiguration, client clientset.Interface, recorder record.EventRecorder) (*leaderelection.LeaderElectionConfig, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -364,7 +364,7 @@ func makeLeaderElectionConfig(config componentbaseconfig.LeaderElectionConfigura
 }
 
 // createClients creates a kube client and an event client from the given config and masterOverride.
-// createClients 从给定的配置和 masterOverride 创建一个 kube 客户端和一个 event 客户端
+// 从给定的配置和 masterOverride 创建一个 kube 客户端和一个 event 客户端
 // TODO remove masterOverride when CLI flags are removed.
 func createClients(config componentbaseconfig.ClientConnectionConfiguration, masterOverride string, timeout time.Duration) (clientset.Interface, clientset.Interface, clientset.Interface, error) {
 	if len(config.Kubeconfig) == 0 && len(masterOverride) == 0 {

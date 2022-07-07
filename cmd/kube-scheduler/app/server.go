@@ -175,7 +175,7 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 
 	// Prepare the event broadcaster.
 	// 准备事件广播器
-	cc.EventBroadcaster.StartRecordingToSink(ctx.Done())
+	cc.EventBroadcaster.StartRecordingToSink(ctx.Done()) // 开始发送从指定的eventBroadcaster接收的事件
 
 	// Setup healthz checks.
 	// 设置健康检查

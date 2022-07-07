@@ -97,6 +97,8 @@ type SchedulingQueue interface {
 }
 
 // NewSchedulingQueue initializes a priority queue as a new scheduling queue.
+
+// 将优先级队列初始化为新的调度队列
 func NewSchedulingQueue(lessFn framework.LessFunc, opts ...Option) SchedulingQueue {
 	return NewPriorityQueue(lessFn, opts...)
 }
@@ -333,7 +335,7 @@ func (p *PriorityQueue) AddUnschedulableIfNotPresent(pInfo *framework.QueuedPodI
 }
 
 // flushBackoffQCompleted Moves all pods from backoffQ which have completed backoff in to activeQ
-// flushBackoffQCompleted 将所有已完成回退的pod从backoffQ移动到activeQ
+// 将所有已完成回退的pod从backoffQ移动到activeQ
 func (p *PriorityQueue) flushBackoffQCompleted() {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -359,7 +361,7 @@ func (p *PriorityQueue) flushBackoffQCompleted() {
 }
 
 // flushUnschedulableQLeftover moves pod which stays in unschedulableQ longer than the unschedulableQTimeInterval to activeQ.
-// flushUnschedulableQLeftover 将停留在unschedulableQ的时间长于unschedulableQTimeInterval的pod移动到activeQ
+// 将停留在unschedulableQ的时间长于unschedulableQTimeInterval的pod移动到activeQ
 func (p *PriorityQueue) flushUnschedulableQLeftover() {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -727,13 +729,18 @@ func newUnschedulablePodsMap(metricRecorder metrics.MetricRecorder) *Unschedulab
 // It exists because nominatedNodeName of pod objects stored in the structure
 // may be different than what scheduler has here. We should be able to find pods
 // by their UID and update/delete them.
+
+// nominatedPodMa 是一个用于存储被提名在节点上运行的pod的结构。它的存在是因为存储在该结构中的pod对象的nominatedNodeName可能与调度器在这里的不同。
+// 应该能够通过他们的UID找到pod，并更新/删除它们
 type nominatedPodMap struct {
 	// nominatedPods is a map keyed by a node name and the value is a list of
 	// pods which are nominated to run on the node. These are pods which can be in
 	// the activeQ or unschedulableQ.
+
+	// 一个以节点名称为键的映射，其值是一个被提名在该节点上运行的pod的列表。这些pod可以是在 activeQueue 或 unschedulableQueue
 	nominatedPods map[string][]*v1.Pod
-	// nominatedPodToNode is map keyed by a Pod UID to the node name where it is
-	// nominated.
+	// nominatedPodToNode is map keyed by a Pod UID to the node name where it is nominated.
+	// 由 Pod UID 键映射到它被提名的节点名称
 	nominatedPodToNode map[ktypes.UID]string
 
 	sync.RWMutex
@@ -803,6 +810,7 @@ func (npm *nominatedPodMap) UpdateNominatedPod(oldPod, newPod *v1.Pod) {
 }
 
 // NewPodNominator creates a nominatedPodMap as a backing of framework.PodNominator.
+// 创建一个指定的podmap作为 framework.PodNominator框架的支撑
 func NewPodNominator() framework.PodNominator {
 	return &nominatedPodMap{
 		nominatedPods:      make(map[string][]*v1.Pod),

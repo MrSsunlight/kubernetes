@@ -122,6 +122,7 @@ func (c *Configurator) buildFramework(p schedulerapi.KubeSchedulerProfile, opts 
 func (c *Configurator) create() (*Scheduler, error) {
 	var extenders []framework.Extender    // 扩展器
 	var ignoredExtendedResources []string // 忽略扩展资源
+	// 将可忽略得扩展筛选出来 添加到最后端
 	if len(c.extenders) != 0 {
 		var ignorableExtenders []framework.Extender
 		for ii := range c.extenders {
@@ -142,6 +143,7 @@ func (c *Configurator) create() (*Scheduler, error) {
 			}
 		}
 		// place ignorable extenders to the tail of extenders
+		// 将可忽略的扩展器放在扩展器的尾部
 		extenders = append(extenders, ignorableExtenders...)
 	}
 
@@ -150,6 +152,10 @@ func (c *Configurator) create() (*Scheduler, error) {
 	// plugin args (and in which case the extender ignored resources take precedence).
 	// For earlier versions, using both policy and custom plugin config is disallowed, so this should be the only
 	// plugin config for this plugin.
+
+	// 如果从扩展程序中找到任何扩展资源，请将它们附加到每个配置文件的 pluginConfig。 这应该只对 ComponentConfig v1beta1 有影响，
+	// 在那里可以配置扩展器和插件参数（在这种情况下，扩展器忽略的资源优先）。
+	// 对于早期版本，不允许同时使用策略和自定义插件配置，因此这应该是此插件的唯一插件配置
 	if len(ignoredExtendedResources) > 0 {
 		for i := range c.profiles {
 			prof := &c.profiles[i]
@@ -176,6 +182,7 @@ func (c *Configurator) create() (*Scheduler, error) {
 		return nil, errors.New("at least one profile is required")
 	}
 	// Profiles are required to have equivalent queue sort plugins.
+	// 配置文件需要有等同的队列排序插件
 	lessFn := profiles[c.profiles[0].SchedulerName].Framework.QueueSortFunc()
 	podQueue := internalqueue.NewSchedulingQueue(
 		lessFn,
@@ -452,6 +459,7 @@ func (i *podInformer) Lister() corelisters.PodLister {
 }
 
 // NewPodInformer creates a shared index informer that returns only non-terminal pods.
+// 创建一个共享索引信息器，只返回非终端的pods
 func NewPodInformer(client clientset.Interface, resyncPeriod time.Duration) coreinformers.PodInformer {
 	selector := fields.ParseSelectorOrDie(
 		"status.phase!=" + string(v1.PodSucceeded) +

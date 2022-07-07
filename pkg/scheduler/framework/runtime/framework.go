@@ -187,6 +187,7 @@ func withMetricsRecorder(recorder *metricsRecorder) Option {
 }
 
 // WithPodNominator sets podNominator for the scheduling frameworkImpl.
+// 为调度框架模型设置podNominator
 func WithPodNominator(nominator framework.PodNominator) Option {
 	return func(o *frameworkOptions) {
 		o.podNominator = nominator

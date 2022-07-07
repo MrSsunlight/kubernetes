@@ -69,6 +69,8 @@ type mux interface {
 
 // New creates a Config object with the given name. Each Config is registered
 // with this package's "/configz" handler.
+
+// 创建一个具有给定名称的 Config 对象。 每个配置都注册到这个包的“/configz”处理程序
 func New(name string) (*Config, error) {
 	configsGuard.Lock()
 	defer configsGuard.Unlock()

@@ -62,10 +62,11 @@ func NewProfile(cfg config.KubeSchedulerProfile, frameworkFact FrameworkFactory,
 }
 
 // Map holds profiles indexed by scheduler name.
+// 保存按调度程序名称索引的配置文件
 type Map map[string]*Profile
 
 // NewMap builds the profiles given by the configuration, indexed by name.
-// 构建由配置给定的配置文件，按名称进行索引
+// 构建配置给出的配置文件，并按名称建立索引
 func NewMap(cfgs []config.KubeSchedulerProfile, frameworkFact FrameworkFactory, recorderFact RecorderFactory,
 	opts ...frameworkruntime.Option) (Map, error) {
 	m := make(Map)
