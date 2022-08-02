@@ -175,12 +175,12 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 
 	// Prepare the event broadcaster.
 	// 准备事件广播器
-	cc.EventBroadcaster.StartRecordingToSink(ctx.Done()) // 开始发送从指定的eventBroadcaster接收的事件
+	cc.EventBroadcaster.StartRecordingToSink(ctx.Done()) // 开始发送从指定的eventBroadcaster接收的事件 -- k8s.io/client-go/tools/events/event_broadcaster.go  --> (e *eventBroadcasterAdapterImpl) StartRecordingToSink()
 
 	// Setup healthz checks.
 	// 设置健康检查
 	var checks []healthz.HealthChecker
-	// 如果开启 leader 选举，则添加到健康检查器中
+	// 如果组件配置开启 leader 选举，则添加到健康检查器中
 	if cc.ComponentConfig.LeaderElection.LeaderElect {
 		checks = append(checks, cc.LeaderElection.WatchDog)
 	}
@@ -216,6 +216,7 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 
 	// Start all informers.
 	// 运行PodInformer，并运行InformerFactory。此部分的逻辑为client-go的informer机制
+	// 在 cmd/kube-scheduler/app/config/config.go   type Config struct  内赋值
 	go cc.PodInformer.Informer().Run(ctx.Done())
 	// 初始化所有请求的 informer
 	cc.InformerFactory.Start(ctx.Done()) // func (f *sharedInformerFactory) Start(stopCh <-chan struct{}) [staging/src/k8s.io/client-go/informers/factory.go]
@@ -246,7 +247,7 @@ func Run(ctx context.Context, cc *schedulerserverconfig.CompletedConfig, sched *
 	}
 
 	// Leader election is disabled, so runCommand inline until done.
-	// 领导者选举被禁用，所以 runCommand 内联直到完成
+	// Leader 选举被禁用，那么 runCommand 内联直到完成
 	sched.Run(ctx)
 	return fmt.Errorf("finished without leader elect")
 }
@@ -300,7 +301,8 @@ func newMetricsHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration) h
 // newHealthzHandler creates a healthz server from the config, and will also
 // embed the metrics handler if the healthz and metrics address configurations
 // are the same.
-// 从配置中创建healthz服务器，如果healthz和metrics地址配置相同，还将嵌入指标处理程序
+
+// 根据配置创建一个 healthz 服务，如果 healthz 和 metrics 地址配置相同，也将嵌入 metrics 处理程序
 func newHealthzHandler(config *kubeschedulerconfig.KubeSchedulerConfiguration, separateMetrics bool, checks ...healthz.HealthChecker) http.Handler {
 	pathRecorderMux := mux.NewPathRecorderMux("kube-scheduler")
 	// 注册用于健康检查的处理程序

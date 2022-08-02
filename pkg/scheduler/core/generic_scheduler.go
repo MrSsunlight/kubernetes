@@ -394,7 +394,7 @@ func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *p
 	return feasibleNodes, nil
 }
 
-// 查找可行的节点
+// 查找通过扩展插件的节点
 func (g *genericScheduler) findNodesThatPassExtenders(pod *v1.Pod, feasibleNodes []*v1.Node, statuses framework.NodeToStatusMap) ([]*v1.Node, error) {
 	// 遍历扩展器
 	for _, extender := range g.extenders {
@@ -467,10 +467,13 @@ func addNominatedPods(ctx context.Context, ph framework.PreemptHandle, pod *v1.P
 // and add the nominated pods. Removal of the victims is done by
 // SelectVictimsOnNode(). Preempt removes victims from PreFilter state and
 // NodeInfo before calling this function.
+
 // TODO: move this out so that plugins don't need to depend on <core> pkg.
 // 检查 NodeInfo 给定的节点是否满足过滤器插件。
-// 这个函数是从两个不同的地方调用的：Schedule（调度） 和 Preempt（抢占）。 当从 Schedule 调用它时，想要测试该 pod 是否可以在该节点上调度，该节点上的所有现有 pod 以及指定在该节点上运行的nominated pods(被录用的pods)更高且相等优先级的 pod。
-// 当从 Preempt 调用时，将会去掉将要驱逐的 preemption 的受害者并添加指定的 Pod。 受害者的移除由 SelectVictimsOnNode() 完成。 Preempt 在调用此函数之前从 PreFilter 状态和 NodeInfo 中删除受害者,在这里会执行两遍逻辑，其中主要是为了检查 nominated pods存在与否产生的不同结果。
+// 这个函数是从两个不同的地方调用的：Schedule（调度） 和 Preempt（抢占）。 当从 Schedule 调用它时，想要测试该 pod 是否可以在该节点上调度，
+// 该节点上的所有现有 pod 以及指定在该节点上运行的nominated pods(被录用的pods)更高且相等优先级的 pod。
+// 当从 Preempt 调用时，将会去掉将要驱逐的 preemption 的受害者并添加指定的 Pod。 受害者的移除由 SelectVictimsOnNode() 完成。
+// Preempt 在调用此函数之前从 PreFilter 状态和 NodeInfo 中删除受害者,在这里会执行两遍逻辑，其中主要是为了检查 nominated pods存在与否产生的不同结果。
 func PodPassesFiltersOnNode(
 	ctx context.Context,
 	ph framework.PreemptHandle,
@@ -512,7 +515,7 @@ func PodPassesFiltersOnNode(
 			break
 		}
 
-		statusMap := ph.RunFilterPlugins(ctx, stateToUse, pod, nodeInfoToUse)
+		statusMap := ph.RunFilterPlugins(ctx, stateToUse, pod, nodeInfoToUse) // pkg/scheduler/framework/runtime/framework.go
 		status = statusMap.Merge()
 		if !status.IsSuccess() && !status.IsUnschedulable() {
 			return false, status, status.AsError()

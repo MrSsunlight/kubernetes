@@ -436,7 +436,7 @@ func (sched *Scheduler) assume(assumed *v1.Pod, host string) error {
 	}
 	// if "assumed" is a nominated pod, we should remove it from internal cache
 	if sched.SchedulingQueue != nil {
-		sched.SchedulingQueue.DeleteNominatedPodIfExists(assumed)
+		sched.SchedulingQueue.DeleteNominatedPodIfExists(assumed) // pkg/scheduler/internal/queue/scheduling_queue.go
 	}
 
 	return nil
@@ -445,6 +445,8 @@ func (sched *Scheduler) assume(assumed *v1.Pod, host string) error {
 // bind binds a pod to a given node defined in a binding object.
 // The precedence for binding is: (1) extenders and (2) framework plugins.
 // We expect this to run asynchronously, so we handle binding metrics internally.
+
+// 将一个pod绑定到一个绑定对象中定义的给定节点。绑定的优先级是：（1）扩展器和（2）框架插件。我们希望它能异步运行，所以我们在内部处理绑定指标
 func (sched *Scheduler) bind(ctx context.Context, prof *profile.Profile, assumed *v1.Pod, targetNode string, state *framework.CycleState) (err error) {
 	start := time.Now()
 	defer func() {
@@ -494,7 +496,7 @@ func (sched *Scheduler) finishBinding(prof *profile.Profile, assumed *v1.Pod, ta
 }
 
 // scheduleOne does the entire scheduling workflow for a single pod.  It is serialized on the scheduling algorithm's host fitting.
-// scheduleOne 为单个 pod 执行整个调度工作流程。它被序列化在调度算法的适合的主机上
+// 为单个 pod 执行整个调度工作流程。它被序列化在调度算法的适合的主机上
 func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	// 在setup 中初始化赋值 nextpod   (c *Configurator) create() [pkg/scheduler/factory.go] --> internalqueue.MakeNextPodFunc(podQueue) [pkg/scheduler/internal/queue/scheduling_queue.go]
 	// 获取待调度的pod，返回调度器的额外信息（首次加入队列时间、重复调度次数等）
@@ -541,6 +543,9 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 		// into the resources that were preempted, but this is harmless.
 		// Schedule() 可能因为 Pod 不适合任何主机而失败，因此我们尝试抢占，期望下次尝试调度 Pod 时由于抢占而适合。
 		// 也有可能不同的 pod 会调度到被抢占的资源中，但这是无害的
+
+		klog.Error(" Schedule() 调度失败，尝试抢占调度 ")
+
 		nominatedNode := ""
 		if fitError, ok := err.(*core.FitError); ok {
 			if !prof.HasPostFilterPlugins() {
@@ -558,6 +563,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 				if status.IsSuccess() && result != nil {
 					// 被提名的节点
 					nominatedNode = result.NominatedNodeName
+					klog.V(5).Infof("运行抢占调度成功，记录被提名的节点: %v", nominatedNode)
 				}
 			}
 			// Pod did not fit anywhere, so it is counted as a failure. If preemption
@@ -598,7 +604,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	}
 
 	// Run the Reserve method of reserve plugins.
-	// 运行储备插件的储备方法
+	// 运行储备插件的储备方法  pkg/scheduler/framework/runtime/framework.go
 	if sts := prof.RunReservePluginsReserve(schedulingCycleCtx, state, assumedPod, scheduleResult.SuggestedHost); !sts.IsSuccess() {
 		metrics.PodScheduleError(prof.Name, metrics.SinceInSeconds(start))
 		// trigger un-reserve to clean up state associated with the reserved Pod
@@ -611,7 +617,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	}
 
 	// Run "permit" plugins.
-	// 运行“许可”插件
+	// 运行“许可”插件  --> pkg/scheduler/framework/runtime/framework.go
 	runPermitStatus := prof.RunPermitPlugins(schedulingCycleCtx, state, assumedPod, scheduleResult.SuggestedHost)
 	if runPermitStatus.Code() != framework.Wait && !runPermitStatus.IsSuccess() {
 		var reason string
@@ -639,17 +645,20 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 		metrics.SchedulerGoroutines.WithLabelValues("binding").Inc()
 		defer metrics.SchedulerGoroutines.WithLabelValues("binding").Dec()
 
+		// 等待许可状态
 		waitOnPermitStatus := prof.WaitOnPermit(bindingCycleCtx, assumedPod)
 		if !waitOnPermitStatus.IsSuccess() {
 			var reason string
 			if waitOnPermitStatus.IsUnschedulable() {
 				metrics.PodUnschedulable(prof.Name, metrics.SinceInSeconds(start))
+				// 记录失败原因
 				reason = v1.PodReasonUnschedulable
 			} else {
 				metrics.PodScheduleError(prof.Name, metrics.SinceInSeconds(start))
 				reason = SchedulerError
 			}
 			// trigger un-reserve plugins to clean up state associated with the reserved Pod
+			// 触发解除预留插件，清理与预留Pod相关的状态
 			prof.RunReservePluginsUnreserve(bindingCycleCtx, state, assumedPod, scheduleResult.SuggestedHost)
 			if forgetErr := sched.Cache().ForgetPod(assumedPod); forgetErr != nil {
 				klog.Errorf("scheduler cache ForgetPod failed: %v", forgetErr)
@@ -659,10 +668,12 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 		}
 
 		// Run "prebind" plugins.
+		// 运行 prebind(预绑定) 插件
 		preBindStatus := prof.RunPreBindPlugins(bindingCycleCtx, state, assumedPod, scheduleResult.SuggestedHost)
 		if !preBindStatus.IsSuccess() {
 			metrics.PodScheduleError(prof.Name, metrics.SinceInSeconds(start))
 			// trigger un-reserve plugins to clean up state associated with the reserved Pod
+			// 触发解除预留插件，清理与预留Pod相关的状态
 			prof.RunReservePluginsUnreserve(bindingCycleCtx, state, assumedPod, scheduleResult.SuggestedHost)
 			if forgetErr := sched.Cache().ForgetPod(assumedPod); forgetErr != nil {
 				klog.Errorf("scheduler cache ForgetPod failed: %v", forgetErr)
@@ -676,6 +687,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 		if err != nil {
 			metrics.PodScheduleError(prof.Name, metrics.SinceInSeconds(start))
 			// trigger un-reserve plugins to clean up state associated with the reserved Pod
+			// 触发解除预留插件，清理与预留Pod相关的状态
 			prof.RunReservePluginsUnreserve(bindingCycleCtx, state, assumedPod, scheduleResult.SuggestedHost)
 			if err := sched.SchedulerCache.ForgetPod(assumedPod); err != nil {
 				klog.Errorf("scheduler cache ForgetPod failed: %v", err)
@@ -683,6 +695,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 			sched.recordSchedulingFailure(prof, assumedPodInfo, fmt.Errorf("Binding rejected: %v", err), SchedulerError, "")
 		} else {
 			// Calculating nodeResourceString can be heavy. Avoid it if klog verbosity is below 2.
+			// 计算nodeesourcestring可能很重。如果klog的冗长度低于2，请避免使用
 			if klog.V(2).Enabled() {
 				klog.InfoS("Successfully bound pod to node", "pod", klog.KObj(pod), "node", scheduleResult.SuggestedHost, "evaluatedNodes", scheduleResult.EvaluatedNodes, "feasibleNodes", scheduleResult.FeasibleNodes)
 			}

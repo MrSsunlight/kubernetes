@@ -185,6 +185,7 @@ type SharedInformer interface {
 }
 
 // SharedIndexInformer provides add and get Indexers ability based on SharedInformer.
+// 提供基于SharedInformer的添加和获取索引器的能力
 type SharedIndexInformer interface {
 	SharedInformer
 	// AddIndexers add indexers to the informer before it starts.

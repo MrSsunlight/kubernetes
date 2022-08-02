@@ -584,6 +584,7 @@ type PodNominator interface {
 // scheduling the pod on nodes when certain running pods get evicted.
 type PluginsRunner interface {
 	// RunFilterPlugins runs the set of configured filter plugins for pod on the given node.
+	// 在给定节点上为pod运行一组配置好的过滤器插件
 	RunFilterPlugins(context.Context, *CycleState, *v1.Pod, *NodeInfo) PluginToStatus
 	// RunPreFilterExtensionAddPod calls the AddPod interface for the set of configured PreFilter plugins.
 	// 为已配置的PreFilter插件集调用AddPod接口

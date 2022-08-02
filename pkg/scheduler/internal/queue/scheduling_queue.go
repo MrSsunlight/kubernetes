@@ -592,6 +592,7 @@ func (p *PriorityQueue) Close() {
 }
 
 // DeleteNominatedPodIfExists deletes <pod> from nominatedPods.
+// 从指定的 Pods 中删除 pod
 func (npm *nominatedPodMap) DeleteNominatedPodIfExists(pod *v1.Pod) {
 	npm.Lock()
 	npm.delete(pod)
