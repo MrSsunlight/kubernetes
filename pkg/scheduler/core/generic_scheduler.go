@@ -160,9 +160,9 @@ func (g *genericScheduler) Schedule(ctx context.Context, prof *profile.Profile, 
 		return result, ErrNoNodesAvailable
 	}
 
-	// 谓词评估开始时间
+	// 谓词评估（预选）开始时间
 	startPredicateEvalTime := time.Now()
-	// filter 过滤
+	// filter 过滤 即开始预选
 	// 根据框架过滤器插件和过滤器扩展器找到适合 pod 的节点
 	feasibleNodes, filteredNodesStatuses, err := g.findNodesThatFitPod(ctx, prof, state, pod)
 	if err != nil {
@@ -204,7 +204,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, prof *profile.Profile, 
 	metrics.DeprecatedSchedulingAlgorithmPriorityEvaluationSecondsDuration.Observe(metrics.SinceInSeconds(startPriorityEvalTime))
 	metrics.DeprecatedSchedulingDuration.WithLabelValues(metrics.PriorityEvaluation).Observe(metrics.SinceInSeconds(startPriorityEvalTime))
 
-	// 7.选择节点
+	// 7.选择节点， 如果优选出多个Node，则随机选择一个Node作为最佳Node返回
 	host, err := g.selectHost(priorityList)
 	trace.Step("Prioritizing done")
 
@@ -340,7 +340,7 @@ func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *p
 	var statusesLock sync.Mutex
 	var feasibleNodesLen int32
 	ctx, cancel := context.WithCancel(ctx)
-	// 定义 checkNode 函数
+	// 定义 checkNode 函数. 调用 PodPassesFiltersOnNode 完成配置的所有 Predicates Policies 对该 Node 的检查
 	checkNode := func(i int) {
 		// We check the nodes starting from where we left off in the previous scheduling cycle,
 		// this is to make sure all nodes have the same chance of being examined across pods.
@@ -515,7 +515,8 @@ func PodPassesFiltersOnNode(
 			break
 		}
 
-		statusMap := ph.RunFilterPlugins(ctx, stateToUse, pod, nodeInfoToUse) // pkg/scheduler/framework/runtime/framework.go
+		// pkg/scheduler/framework/runtime/framework.go --> (f *frameworkImpl) RunFilterPlugins()
+		statusMap := ph.RunFilterPlugins(ctx, stateToUse, pod, nodeInfoToUse)
 		status = statusMap.Merge()
 		if !status.IsSuccess() && !status.IsUnschedulable() {
 			return false, status, status.AsError()

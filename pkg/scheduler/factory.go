@@ -202,6 +202,10 @@ func (c *Configurator) create() (*Scheduler, error) {
 	debugger.ListenForSignal(c.StopEverything)
 
 	// 筛选算法， 创建一个 genericScheduler 对象, 满足 ScheduleAlgorithm 接口的实例
+	/*
+		无论是从policyfile，还是从algorithmprovider创建scheduler，最后都会在func (c *Configurator) create() 函数中
+			调用一个函数 NewGenericScheduler。这个函数构建了一个真正的调度器
+	*/
 	algo := core.NewGenericScheduler(
 		c.schedulerCache,
 		c.nodeInfoSnapshot,
@@ -223,7 +227,7 @@ func (c *Configurator) create() (*Scheduler, error) {
 }
 
 // createFromProvider creates a scheduler from the name of a registered algorithm provider.
-// 根据注册的算法提供者的名字创建一个调度器
+// 根据注册的算法提供者的名字创建一个调度器(使用前面系统默认的评分函数组)
 func (c *Configurator) createFromProvider(providerName string) (*Scheduler, error) {
 	klog.V(2).Infof("Creating scheduler from algorithm provider '%v'", providerName)
 	r := algorithmprovider.NewRegistry()
@@ -244,7 +248,7 @@ func (c *Configurator) createFromProvider(providerName string) (*Scheduler, erro
 
 // createFromConfig creates a scheduler from the configuration file
 // Only reachable when using v1alpha1 component config
-// 从配置文件中创建一个调度器 （仅在使用 v1alpha1 组件配置时可访问）
+// 从配置文件中创建一个调度器 （仅在使用 v1alpha1 组件配置时可访问, 需要用户自行传递，用户可以自己组合评分函数）
 func (c *Configurator) createFromConfig(policy schedulerapi.Policy) (*Scheduler, error) {
 	// 谓词算法注册
 	lr := frameworkplugins.NewLegacyRegistry()

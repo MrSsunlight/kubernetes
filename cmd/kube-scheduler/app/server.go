@@ -369,8 +369,8 @@ func Setup(ctx context.Context, opts *options.Options, outOfTreeRegistryOptions 
 	recorderFactory := getRecorderFactory(&cc)
 	// Create the scheduler.
 	// 创建调度器
-	sched, err := scheduler.New(cc.Client,
-		cc.InformerFactory, // node的监听
+	sched, err := scheduler.New(cc.Client, // (o *Options) Config() --> createClients() 创建
+		cc.InformerFactory, // node的监听  (o *Options) Config() -->NewSharedInformerFactory() 创建
 		cc.PodInformer,     // pod的监听
 		recorderFactory,    // 记录器
 		ctx.Done(),

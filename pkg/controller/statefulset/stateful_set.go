@@ -139,6 +139,7 @@ func NewStatefulSetController(
 }
 
 // Run runs the statefulset controller.
+// 运行statefulset控制器
 func (ssc *StatefulSetController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer ssc.queue.ShutDown()

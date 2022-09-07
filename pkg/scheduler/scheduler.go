@@ -257,12 +257,16 @@ func New(client clientset.Interface,
 	// 调度程序算法的源
 	source := options.schedulerAlgorithmSource
 	klog.V(2).Infof("调度程序算法的源: Provider:%v\tPolicy:%v\n", source.Provider, source.Policy)
+	/*
+		无论是从policyfile，还是从algorithmprovider创建scheduler，最后都会在func (c *Configurator) create() 函数中
+			调用一个函数 NewGenericScheduler。这个函数构建了一个真正的调度器
+	*/
 	switch {
 	// 提供者 不为空
 	case source.Provider != nil:
 		klog.V(2).Infof("从指定的算法提供程序创建配置")
 		// Create the config from a named algorithm provider.
-		// 从指定的算法提供程序创建配置
+		// 从指定的算法提供程序创建配置, 使用系统默认的评分函数组合
 		sc, err := configurator.createFromProvider(*source.Provider)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't create scheduler using provider %q: %v", *source.Provider, err)
@@ -292,6 +296,7 @@ func New(client clientset.Interface,
 		// 既然我们已经解码了策略，就在配置器上设置扩展器。在这种情况下，c.extenders 应该是 nil，
 		// 因为我们使用的是策略（因此不是 componentconfig，它会在上面的 CC 选项的 Configurator 实例化中设置扩展器 )
 		configurator.extenders = policy.Extenders
+		// 需要用户自行传递，用户可以自己组合评分函数
 		sc, err := configurator.createFromConfig(*policy)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't create scheduler from policy: %v", err)
@@ -427,9 +432,15 @@ func (sched *Scheduler) assume(assumed *v1.Pod, host string) error {
 	// in the background.
 	// If the binding fails, scheduler will release resources allocated to assumed pod
 	// immediately.
+	/*
+			乐观地假定绑定将成功，并将其发送到后台的 apiserver。
+		唯一的风险在于如果因为某些情况绑定失败了，scheduler在准备开始调度下一个pod的时候，会假设前一个pod已经绑定成功，
+		直到内部cache的假设过期时间（30s之内没有通过watch读到绑定的信息）。超过这个时间，该情况会被修复
+	*/
 	assumed.Spec.NodeName = host
 
-	// 8.假定选中pod  -->AssumePod() [pkg/scheduler/internal/cache/cache.go]
+	// 8.假定选中pod  -->(cache *schedulerCache) AssumePod(pod *v1.Pod) [pkg/scheduler/internal/cache/cache.go]
+	// 更新SchedulerCache中该Pod的状态，假设该Pod已经被预绑定，同时把pod information写入NodeInfo中
 	if err := sched.SchedulerCache.AssumePod(assumed); err != nil {
 		klog.Errorf("scheduler cache AssumePod failed: %v", err)
 		return err
@@ -499,7 +510,7 @@ func (sched *Scheduler) finishBinding(prof *profile.Profile, assumed *v1.Pod, ta
 // 为单个 pod 执行整个调度工作流程。它被序列化在调度算法的适合的主机上
 func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	// 在setup 中初始化赋值 nextpod   (c *Configurator) create() [pkg/scheduler/factory.go] --> internalqueue.MakeNextPodFunc(podQueue) [pkg/scheduler/internal/queue/scheduling_queue.go]
-	// 获取待调度的pod，返回调度器的额外信息（首次加入队列时间、重复调度次数等）
+	// 从PodQueue中获取一个未调度的pod，返回调度器的额外信息（首次加入队列时间、重复调度次数等）
 	podInfo := sched.NextPod()
 	// pod could be nil when schedulerQueue is closed
 	// 当 schedulerQueue 被关闭时，pod可能为零
@@ -532,7 +543,8 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	state.SetRecordPluginMetrics(rand.Intn(100) < pluginMetricsSamplePercent)
 	schedulingCycleCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	// 尝试将给定的 pod 调度到节点列表中的一个节点。如果成功，它将返回 node 的名称。如果失败，它将返回一个带有原因的fiiterror错误
+	// 尝试将给定的 pod 调度到节点列表中的一个节点。如果成功，它将返回 node 的名称。如果失败，它将返回一个带有原因的 fiiterror 错误
+	// 进行实际调度，默认调度算法是 DefaultProvider，也是具体执行的调度算法, 选出合适的node
 	// Algorithm --> genericScheduler; func (g *genericScheduler) Schedule(...) [pkg/scheduler/core/generic_scheduler.go]
 	scheduleResult, err := sched.Algorithm.Schedule(schedulingCycleCtx, prof, state, pod)
 	// 如果筛选过程出错
@@ -590,7 +602,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	assumedPodInfo := podInfo.DeepCopy()
 	assumedPod := assumedPodInfo.Pod
 	// assume modifies `assumedPod` by setting NodeName=scheduleResult.SuggestedHost
-	// 假设通过设置 NodeName = scheduleResult.SuggestedHost 修改 `assumedPod`
+	// 假设通过设置 NodeName = scheduleResult.SuggestedHost 修改 `assumedPod`, 更新SchedulerCache中Pod的状态(AssumePod)，假设该Pod已经被scheduled
 	err = sched.assume(assumedPod, scheduleResult.SuggestedHost)
 	if err != nil {
 		metrics.PodScheduleError(prof.Name, metrics.SinceInSeconds(start))
@@ -682,8 +694,9 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 			return
 		}
 
-		// 9.绑定 pod
+		// 9.将 pod 绑定到 node
 		err := sched.bind(bindingCycleCtx, prof, assumedPod, scheduleResult.SuggestedHost, state)
+		// 发送调度结果给master 调用 kube-Client 的 Bind 接口，完成 node 和 pod 的 Bind 操作，如果 Bind 失败，从 SchedulerCache 中删除上一步中已经 Assumed 的 Pod
 		if err != nil {
 			metrics.PodScheduleError(prof.Name, metrics.SinceInSeconds(start))
 			// trigger un-reserve plugins to clean up state associated with the reserved Pod
