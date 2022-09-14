@@ -170,6 +170,7 @@ func ResyncPeriod(c *config.CompletedConfig) func() time.Duration {
 }
 
 // Run runs the KubeControllerManagerOptions.  This should never exit.
+// 运行 Kube Controller Manager 选项
 func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 	// To help debugging, immediately log version
 	klog.Infof("Version: %+v", version.Get())

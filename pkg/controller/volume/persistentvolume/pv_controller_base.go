@@ -444,6 +444,7 @@ func updateMigrationAnnotations(cmpm CSIMigratedPluginManager, translator CSINam
 // volumeWorker 处理来自 volumeQueue 的项。 它只能运行一次，不能保证syncVolume是可重入的
 func (ctrl *PersistentVolumeController) volumeWorker() {
 	workFunc := func() bool {
+		// 获取 PV
 		keyObj, quit := ctrl.volumeQueue.Get()
 		if quit {
 			return true
@@ -453,16 +454,18 @@ func (ctrl *PersistentVolumeController) volumeWorker() {
 		key := keyObj.(string)
 		klog.V(5).Infof("volumeWorker[%s]", key)
 
+		// 切割 meta 下的 namespace 和 name
 		_, name, err := cache.SplitMetaNamespaceKey(key)
 		if err != nil {
 			klog.V(4).Infof("error getting name of volume %q to get volume from informer: %v", key, err)
 			return false
 		}
+		// 根据 PV 名 获取对应的 volume
 		volume, err := ctrl.volumeLister.Get(name)
 		if err == nil {
 			// The volume still exists in informer cache, the event must have
 			// been add/update/sync
-			// volume仍然存在于informer缓存中，event(事件)一定是添加/更新/同步
+			// volume 仍然存在于 informer 缓存中，event(事件)一定是添加/更新/同步
 			ctrl.updateVolume(volume)
 			return false
 		}
@@ -504,22 +507,26 @@ func (ctrl *PersistentVolumeController) volumeWorker() {
 
 // claimWorker processes items from claimQueue. It must run only once,
 // syncClaim is not reentrant.
-// claimWorker 处理来自claimQueue的项。 它只能运行一次，syncClaim是不可重入的。
+// 处理来自claimQueue的项。 它只能运行一次，syncClaim是不可重入的。
 func (ctrl *PersistentVolumeController) claimWorker() {
 	workFunc := func() bool {
+		// 查看队列是否为空，并且 shuttingDown 标志被赋值 True
 		keyObj, quit := ctrl.claimQueue.Get()
 		if quit {
+			// 队列为空并且shuttingDown 为 True 结束循环
 			return true
 		}
 		defer ctrl.claimQueue.Done(keyObj)
 		key := keyObj.(string)
 		klog.V(5).Infof("claimWorker[%s]", key)
 
+		// 获取 namespace 和 name
 		namespace, name, err := cache.SplitMetaNamespaceKey(key)
 		if err != nil {
 			klog.V(4).Infof("error getting namespace & name of claim %q to get claim from informer: %v", key, err)
 			return false
 		}
+		// 查找对应 PVC
 		claim, err := ctrl.claimLister.PersistentVolumeClaims(namespace).Get(name)
 		if err == nil {
 			// The claim still exists in informer cache, the event must have

@@ -253,6 +253,7 @@ func (ctrl *PersistentVolumeController) syncClaim(claim *v1.PersistentVolumeClai
 	if err != nil {
 		// Nothing was saved; we will fall back into the same
 		// condition in the next call to this method
+		// 没有保存;在下次调用此方法时，将回到相同的情况
 		return err
 	}
 	claim = newClaim
@@ -482,6 +483,7 @@ func (ctrl *PersistentVolumeController) syncUnboundClaim(claim *v1.PersistentVol
 
 // syncBoundClaim is the main controller method to decide what to do with a
 // bound claim.
+// 决定如何处理绑定声明的主要控制器方法
 func (ctrl *PersistentVolumeController) syncBoundClaim(claim *v1.PersistentVolumeClaim) error {
 	// HasAnnotation(pvc, pvutil.AnnBindCompleted)
 	// This PVC has previously been bound
@@ -489,6 +491,7 @@ func (ctrl *PersistentVolumeController) syncBoundClaim(claim *v1.PersistentVolum
 	// [Unit test set 3]
 	if claim.Spec.VolumeName == "" {
 		// Claim was bound before but not any more.
+		// PVC 以前处于绑定，但现在不是(缺少指定 PV 引用)
 		if _, err := ctrl.updateClaimStatusWithEvent(claim, v1.ClaimLost, nil, v1.EventTypeWarning, "ClaimLost", "Bound claim has lost reference to PersistentVolume. Data on the volume is lost!"); err != nil {
 			return err
 		}
@@ -500,6 +503,7 @@ func (ctrl *PersistentVolumeController) syncBoundClaim(claim *v1.PersistentVolum
 	}
 	if !found {
 		// Claim is bound to a non-existing volume.
+		// PVC 绑定到不存在的 PV 上
 		if _, err = ctrl.updateClaimStatusWithEvent(claim, v1.ClaimLost, nil, v1.EventTypeWarning, "ClaimLost", "Bound claim has lost its PersistentVolume. Data on the volume is lost!"); err != nil {
 			return err
 		}
@@ -565,7 +569,7 @@ func (ctrl *PersistentVolumeController) syncVolume(volume *v1.PersistentVolume) 
 	volume = newVolume
 
 	// [Unit test set 4]
-	// 当 pv 的 Spec.ClaimRef 的值为空的时候，说明当前 pv 未被使用，调用 ctrl.updateVolumePhase 使得 pv 进入 Available 状态
+	// 如果 pv 的 Spec.ClaimRef 的值为空即未设置时，说明当前 pv 未被使用，调用 ctrl.updateVolumePhase 更新状态设置, 使得 pv 进入 Available 状态
 	if volume.Spec.ClaimRef == nil {
 		// Volume is unused
 		klog.V(4).Infof("synchronizing PersistentVolume[%s]: volume is unused", volume.Name)
@@ -575,12 +579,14 @@ func (ctrl *PersistentVolumeController) syncVolume(volume *v1.PersistentVolume) 
 			return err
 		}
 		return nil
-	} else /* pv.Spec.ClaimRef != nil */ { // 当 pv 的 Spec.ClaimRef 的值不为空的时候， 说明当前 pv 已绑定一个pvc
+	} else /* pv.Spec.ClaimRef != nil */ {
+		// 当 pv 的 Spec.ClaimRef 的值不为空的时候， 说明当前 pv 已绑定一个pvc（正在被bound中，更新状态available）
 		// Volume is bound to a claim.
 		// 当Spec.ClaimRef.UID 为空的时候，说明 pvc 还未绑定 pv， 调用ctrl.updateVolumePhase 使得 pv 进入 Available 状态， 方法返回，等待 pvc syncClaim 方法处理
 		if volume.Spec.ClaimRef.UID == "" {
 			// The PV is reserved for a PVC; that PVC has not yet been
 			// bound to this PV; the PVC sync will handle it.
+			// PV 是为 PVC 预留的； PVC 还没有绑定到这个 PV； PVC syncClaim将进行处理
 			klog.V(4).Infof("synchronizing PersistentVolume[%s]: volume is pre-bound to claim %s", volume.Name, claimrefToClaimKey(volume.Spec.ClaimRef))
 			if _, err := ctrl.updateVolumePhase(volume, v1.VolumeAvailable, ""); err != nil {
 				// Nothing was saved; we will fall back into the same
@@ -591,7 +597,7 @@ func (ctrl *PersistentVolumeController) syncVolume(volume *v1.PersistentVolume) 
 		}
 		klog.V(4).Infof("synchronizing PersistentVolume[%s]: volume is bound to claim %s", volume.Name, claimrefToClaimKey(volume.Spec.ClaimRef))
 		// Get the PVC by _name_
-		// 使用 Spec.ClaimRef 相关的 pvc 信息获取 pv_controller缓存的pv
+		// 根据 pv 的 claimRef 获得 pvc
 		var claim *v1.PersistentVolumeClaim
 		claimName := claimrefToClaimKey(volume.Spec.ClaimRef)
 		obj, found, err := ctrl.claims.GetByKey(claimName)
@@ -599,6 +605,7 @@ func (ctrl *PersistentVolumeController) syncVolume(volume *v1.PersistentVolume) 
 			return err
 		}
 		// pvc 没有找到
+		// 如果在队列未发现，可能是 volume 被删除了，或者失败了，重新同步 pvc
 		if !found && metav1.HasAnnotation(volume.ObjectMeta, pvutil.AnnBoundByController) {
 			// If PV is bound by external PV binder (e.g. kube-scheduler), it's
 			// possible on heavy load that corresponding PVC is not synced to
@@ -637,7 +644,8 @@ func (ctrl *PersistentVolumeController) syncVolume(volume *v1.PersistentVolume) 
 		if !found {
 			klog.V(4).Infof("synchronizing PersistentVolume[%s]: claim %s not found", volume.Name, claimrefToClaimKey(volume.Spec.ClaimRef))
 			// Fall through with claim = nil
-		} else { // 找到 pvc
+		} else {
+			// 找到 pvc
 			var ok bool
 			claim, ok = obj.(*v1.PersistentVolumeClaim)
 			if !ok {
@@ -677,6 +685,7 @@ func (ctrl *PersistentVolumeController) syncVolume(volume *v1.PersistentVolume) 
 					return err
 				}
 			}
+			// 根据persistentVolumeReclaimPolicy配置做相应的处理，Retain 保留/ Delete 删除/ Recycle 回收
 			if err = ctrl.reclaimVolume(volume); err != nil {
 				// Release failed, we will fall back into the same condition
 				// in the next call to this method
@@ -688,8 +697,9 @@ func (ctrl *PersistentVolumeController) syncVolume(volume *v1.PersistentVolume) 
 				klog.V(4).Infof("PersistentVolume[%s] references a claim %q (%s) that is not found", volume.Name, claimrefToClaimKey(volume.Spec.ClaimRef), volume.Spec.ClaimRef.UID)
 			}
 			return nil
-		} else if claim.Spec.VolumeName == "" { // 如果pvc 的 volumeName 为空
-			// 检查 pvc的 volumeMode 和 pv 的 volumeMode是否一致，不一致报 event 出来
+		} else if claim.Spec.VolumeName == "" {
+			// 如果 pvc 的 volumeName 为空
+			// 检查 pvc的 volumeMode 和 pv 的 volumeMode 是否一致，不一致报 event 出来
 			if pvutil.CheckVolumeModeMismatches(&claim.Spec, &volume.Spec) {
 				// Binding for the volume won't be called in syncUnboundClaim,
 				// because findBestMatchForClaim won't return the volume due to volumeMode mismatch.
@@ -706,12 +716,11 @@ func (ctrl *PersistentVolumeController) syncVolume(volume *v1.PersistentVolume) 
 			// 如果发现有这个 pv 有 AnnBoundByController = "pv.kubernetes.io/bound-by-controller" 这个annotation 说明 pvc/pv 流程正在绑定中
 			if metav1.HasAnnotation(volume.ObjectMeta, pvutil.AnnBoundByController) {
 				// The binding is not completed; let PVC sync handle it
-				//
-				// 绑定未完成； 让PVC同步处理它
+				// 绑定未完成； 让PVC sync 处理它
 				klog.V(4).Infof("synchronizing PersistentVolume[%s]: volume not bound yet, waiting for syncClaim to fix it", volume.Name)
 			} else {
 				// Dangling PV; try to re-establish the link in the PVC sync
-				// 不稳定的pv, 尝试在PVC同步中重新建立连接
+				// 不稳定的pv, 尝试在PVC sync 中重新建立连接
 				klog.V(4).Infof("synchronizing PersistentVolume[%s]: volume was bound and got unbound (by user?), waiting for syncClaim to fix it", volume.Name)
 			}
 			// In both cases, the volume is Bound and the claim is Pending.
@@ -898,9 +907,10 @@ func (ctrl *PersistentVolumeController) updateClaimStatusWithEvent(claim *v1.Per
 }
 
 // updateVolumePhase saves new volume phase to API server.
-// updateVolumePhase 将新volume 阶段保存到API server
+// updateVolumePhase 将新 volume 阶段状态保存到 API server
 func (ctrl *PersistentVolumeController) updateVolumePhase(volume *v1.PersistentVolume, phase v1.PersistentVolumePhase, message string) (*v1.PersistentVolume, error) {
 	klog.V(4).Infof("updating PersistentVolume[%s]: set phase %s", volume.Name, phase)
+	// 没变化
 	if volume.Status.Phase == phase {
 		// Nothing to do.
 		klog.V(4).Infof("updating PersistentVolume[%s]: phase %s already set", volume.Name, phase)
@@ -911,11 +921,14 @@ func (ctrl *PersistentVolumeController) updateVolumePhase(volume *v1.PersistentV
 	volumeClone.Status.Phase = phase
 	volumeClone.Status.Message = message
 
+	// 更新信息
 	newVol, err := ctrl.kubeClient.CoreV1().PersistentVolumes().UpdateStatus(context.TODO(), volumeClone, metav1.UpdateOptions{})
 	if err != nil {
 		klog.V(4).Infof("updating PersistentVolume[%s]: set phase %s failed: %v", volume.Name, phase, err)
 		return newVol, err
 	}
+
+	// 将更新数据同步到缓存中
 	_, err = ctrl.storeVolumeUpdate(newVol)
 	if err != nil {
 		klog.V(4).Infof("updating PersistentVolume[%s]: cannot update internal cache: %v", volume.Name, err)
@@ -1131,6 +1144,7 @@ func (ctrl *PersistentVolumeController) unbindVolume(volume *v1.PersistentVolume
 
 // reclaimVolume implements volume.Spec.PersistentVolumeReclaimPolicy and
 // starts appropriate reclaim action.
+// 处理 PersistentVolumeReclaimPolicy 策略，如果是Retain策略，那么需要手动执行删除，这里只记录了一个log；如果是Recycle则调用recycleVolumeOperation执行解绑操作；如果是Delete则调用deleteVolumeOperation方法将对应的PV删除
 func (ctrl *PersistentVolumeController) reclaimVolume(volume *v1.PersistentVolume) error {
 	if migrated := volume.Annotations[pvutil.AnnMigratedTo]; len(migrated) > 0 {
 		// PV is Migrated. The PV controller should stand down and the external
@@ -1138,9 +1152,10 @@ func (ctrl *PersistentVolumeController) reclaimVolume(volume *v1.PersistentVolum
 		return nil
 	}
 	switch volume.Spec.PersistentVolumeReclaimPolicy {
+	// 这个策略允许手动回收资源，当PVC被删除后，PV仍然可以存在，管理员可以手动的执行删除PV
 	case v1.PersistentVolumeReclaimRetain:
 		klog.V(4).Infof("reclaimVolume[%s]: policy is Retain, nothing to do", volume.Name)
-
+	// 回收PV，如果没有pod在使用PV，那么将该PV的状态设置为Available
 	case v1.PersistentVolumeReclaimRecycle:
 		klog.V(4).Infof("reclaimVolume[%s]: policy is Recycle", volume.Name)
 		opName := fmt.Sprintf("recycle-%s[%s]", volume.Name, string(volume.UID))
@@ -1148,7 +1163,7 @@ func (ctrl *PersistentVolumeController) reclaimVolume(volume *v1.PersistentVolum
 			ctrl.recycleVolumeOperation(volume)
 			return nil
 		})
-
+	// 这个策略会在PVC被删除之后，连带将PV以及PV管理的存储资源也删除
 	case v1.PersistentVolumeReclaimDelete:
 		klog.V(4).Infof("reclaimVolume[%s]: policy is Delete", volume.Name)
 		opName := fmt.Sprintf("delete-%s[%s]", volume.Name, string(volume.UID))
@@ -1279,26 +1294,30 @@ func (ctrl *PersistentVolumeController) deleteVolumeOperation(volume *v1.Persist
 	// This method may have been waiting for a volume lock for some time.
 	// Previous deleteVolumeOperation might just have saved an updated version, so
 	// read current volume state now.
+	// 先读取最新的PV实例
 	newVolume, err := ctrl.kubeClient.CoreV1().PersistentVolumes().Get(context.TODO(), volume.Name, metav1.GetOptions{})
 	if err != nil {
 		klog.V(3).Infof("error reading persistent volume %q: %v", volume.Name, err)
 		return "", nil
 	}
-
+	// 如果已经被删除了，直接返回
 	if newVolume.GetDeletionTimestamp() != nil {
 		klog.V(3).Infof("Volume %q is already being deleted", volume.Name)
 		return "", nil
 	}
+	// 看一下是否还能找得到对应的PVC
 	needsReclaim, err := ctrl.isVolumeReleased(newVolume)
 	if err != nil {
 		klog.V(3).Infof("error reading claim for volume %q: %v", volume.Name, err)
 		return "", nil
 	}
+	// 如果还有PVC与之关联，那么就不能删除这个PV
 	if !needsReclaim {
 		klog.V(3).Infof("volume %q no longer needs deletion, skipping", volume.Name)
 		return "", nil
 	}
 
+	// 调用相应的plugin删除PV
 	pluginName, deleted, err := ctrl.doDeleteVolume(volume)
 	if err != nil {
 		// Delete failed, update the volume and emit an event.
