@@ -53,6 +53,7 @@ func startDaemonSetController(ctx ControllerContext) (http.Handler, bool, error)
 }
 
 func startStatefulSetController(ctx ControllerContext) (http.Handler, bool, error) {
+	// 检查 statefulsets 资源是否可用
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "statefulsets"}] {
 		return nil, false, nil
 	}

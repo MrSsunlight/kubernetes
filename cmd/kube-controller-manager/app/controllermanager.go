@@ -323,6 +323,7 @@ type ControllerContext struct {
 	RESTMapper *restmapper.DeferredDiscoveryRESTMapper
 
 	// AvailableResources is a map listing currently available resources
+	// 列出当前可用资源的列表
 	AvailableResources map[schema.GroupVersionResource]bool
 
 	// Cloud is the cloud provider interface for the controllers to use.
@@ -395,13 +396,17 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["namespace"] = startNamespaceController
 	controllers["serviceaccount"] = startServiceAccountController
 	controllers["garbagecollector"] = startGarbageCollectorController
+	// daemonset
 	controllers["daemonset"] = startDaemonSetController
+	// job
 	controllers["job"] = startJobController
 	controllers["deployment"] = startDeploymentController
 	controllers["replicaset"] = startReplicaSetController
 	controllers["horizontalpodautoscaling"] = startHPAController
 	controllers["disruption"] = startDisruptionController
+	// statefulset
 	controllers["statefulset"] = startStatefulSetController
+	// cronjob
 	controllers["cronjob"] = startCronJobController
 	controllers["csrsigning"] = startCSRSigningController
 	controllers["csrapproving"] = startCSRApprovingController
