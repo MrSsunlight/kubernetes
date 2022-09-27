@@ -310,6 +310,7 @@ func (ssc *StatefulSetController) canAdoptFunc(set *apps.StatefulSet) func() err
 }
 
 // adoptOrphanRevisions adopts any orphaned ControllerRevisions matched by set's Selector.
+// 采用由set的Selector匹配的任何孤立的 controllerrevision
 func (ssc *StatefulSetController) adoptOrphanRevisions(set *apps.StatefulSet) error {
 	revisions, err := ssc.control.ListRevisions(set)
 	if err != nil {
@@ -383,11 +384,13 @@ func (ssc *StatefulSetController) enqueueStatefulSet(obj interface{}) {
 
 // processNextWorkItem dequeues items, processes them, and marks them done. It enforces that the syncHandler is never
 // invoked concurrently with the same key.
+// 出队列并处理它们，并且标记它们完成。它强制 syncHandler 永远不会使用相同的键同时调用
 func (ssc *StatefulSetController) processNextWorkItem() bool {
 	key, quit := ssc.queue.Get()
 	if quit {
 		return false
 	}
+	// queue 在controller 增 删 更新的时候更新， 初始化在 NewStatefulSetController 中
 	defer ssc.queue.Done(key)
 	if err := ssc.sync(key.(string)); err != nil {
 		utilruntime.HandleError(fmt.Errorf("error syncing StatefulSet %v, requeuing: %v", key.(string), err))
@@ -399,12 +402,14 @@ func (ssc *StatefulSetController) processNextWorkItem() bool {
 }
 
 // worker runs a worker goroutine that invokes processNextWorkItem until the controller's queue is closed
+// 运行一个调用 processNextWorkItem 的 worker goroutine，直到控制器的队列被关闭
 func (ssc *StatefulSetController) worker() {
 	for ssc.processNextWorkItem() {
 	}
 }
 
 // sync syncs the given statefulset.
+// 同步给定的 statefulset
 func (ssc *StatefulSetController) sync(key string) error {
 	startTime := time.Now()
 	defer func() {
@@ -425,6 +430,7 @@ func (ssc *StatefulSetController) sync(key string) error {
 		return err
 	}
 
+	// 获取选择器
 	selector, err := metav1.LabelSelectorAsSelector(set.Spec.Selector)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("error converting StatefulSet %v selector: %v", key, err))
@@ -432,15 +438,18 @@ func (ssc *StatefulSetController) sync(key string) error {
 		return nil
 	}
 
+	// 采纳无主修订版本
 	if err := ssc.adoptOrphanRevisions(set); err != nil {
 		return err
 	}
 
+	// 根据选择器拿到对应的pod列表
 	pods, err := ssc.getPodsForStatefulSet(set, selector)
 	if err != nil {
 		return err
 	}
 
+	// 往下执行sync操作
 	return ssc.syncStatefulSet(set, pods)
 }
 
@@ -448,6 +457,8 @@ func (ssc *StatefulSetController) sync(key string) error {
 func (ssc *StatefulSetController) syncStatefulSet(set *apps.StatefulSet, pods []*v1.Pod) error {
 	klog.V(4).Infof("Syncing StatefulSet %v/%v with %d pods", set.Namespace, set.Name, len(pods))
 	// TODO: investigate where we mutate the set during the update as it is not obvious.
+	// 用到 StatefulSetControlInterface 的实现的 UpdateStatefulSet 方法中
+	// -->  pkg/controller/statefulset/stateful_set_control.go (ssc *defaultStatefulSetControl) UpdateStatefulSet(set *apps.StatefulSet, pods []*v1.Pod) error
 	if err := ssc.control.UpdateStatefulSet(set.DeepCopy(), pods); err != nil {
 		return err
 	}
