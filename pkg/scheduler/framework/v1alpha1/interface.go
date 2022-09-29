@@ -457,6 +457,7 @@ type Framework interface {
 	// It also returns *Status, which is set to non-success if any of the plugins returns
 	// a non-success status.
 	// 运行一组配置的评分插件。它返回一个映射，为每个得分插件名称存储相应的NodeScoreList(s)。它还返回*Status，如果任何插件返回不成功状态，则将其设置为不成功
+	// 在 pkg/scheduler/framework/runtime/framework.go 中实现赋值 Framework： var _ framework.Framework = &frameworkImpl{}
 	RunScorePlugins(ctx context.Context, state *CycleState, pod *v1.Pod, nodes []*v1.Node) (PluginToNodeScores, *Status)
 
 	// RunPreBindPlugins runs the set of configured prebind plugins. It returns

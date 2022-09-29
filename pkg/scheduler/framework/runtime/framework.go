@@ -219,6 +219,7 @@ func (ph *preemptHandle) Extenders() []framework.Extender {
 	return ph.extenders
 }
 
+// 实现 Framework 接口
 var _ framework.Framework = &frameworkImpl{}
 
 // NewFramework initializes plugins given the configuration and the registry.
@@ -606,6 +607,13 @@ func (f *frameworkImpl) runPreScorePlugin(ctx context.Context, pl framework.PreS
 // stores for each scoring plugin name the corresponding NodeScoreList(s).
 // It also returns *Status, which is set to non-success if any of the plugins returns
 // a non-success status.
+
+/*
+分别调用 parallelize.Until 方法跑三次来进行打分：
+第一次会调用 runScorePlugin 方法，里面会调用 getDefaultConfig 里面设置的 score 的 Plugin 来进行打分；
+第二次会调用 runScoreExtension 方法，里面会调用 Plugin 的 NormalizeScore 方法，用来保证分数必须是0到100之间，不是每一个 plugin 都会实现 NormalizeScore 方法。
+第三此会调用遍历所有的 scorePlugins ，并对对应的算出的来的分数乘以一个权重
+*/
 func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodes []*v1.Node) (ps framework.PluginToNodeScores, status *framework.Status) {
 	startTime := time.Now()
 	defer func() {
@@ -619,6 +627,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 	errCh := parallelize.NewErrorChannel()
 
 	// Run Score method for each node in parallel.
+	// 开启多个协程为 node 进行打分
 	parallelize.Until(ctx, len(nodes), func(index int) {
 		for _, pl := range f.scorePlugins {
 			nodeName := nodes[index].Name
@@ -640,6 +649,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 	}
 
 	// Run NormalizeScore method for each ScorePlugin in parallel.
+	// 用于在调度程序计算节点的最终排名之前修改分数,保证 Score 插件的输出必须是 [MinNodeScore，MaxNodeScore]（[0-100]） 范围内的整数
 	parallelize.Until(ctx, len(f.scorePlugins), func(index int) {
 		pl := f.scorePlugins[index]
 		nodeScoreList := pluginToNodeScores[pl.Name()]
@@ -660,6 +670,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, state *framework.Cy
 	}
 
 	// Apply score defaultWeights for each ScorePlugin in parallel.
+	// 为每个节点的分数乘上一个权重
 	parallelize.Until(ctx, len(f.scorePlugins), func(index int) {
 		pl := f.scorePlugins[index]
 		// Score plugins' weight has been checked when they are initialized.

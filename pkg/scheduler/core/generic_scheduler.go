@@ -230,11 +230,13 @@ func (g *genericScheduler) selectHost(nodeScoreList framework.NodeScoreList) (st
 	selected := nodeScoreList[0].Name
 	cntOfMaxScore := 1
 	for _, ns := range nodeScoreList[1:] {
+		// 挑选分数最高的
 		if ns.Score > maxScore {
 			maxScore = ns.Score
 			selected = ns.Name
 			cntOfMaxScore = 1
 		} else if ns.Score == maxScore {
+			// 分数相同 随机抽取
 			cntOfMaxScore++
 			if rand.Intn(cntOfMaxScore) == 0 {
 				// Replace the candidate with probability of 1/cntOfMaxScore
@@ -249,11 +251,14 @@ func (g *genericScheduler) selectHost(nodeScoreList framework.NodeScoreList) (st
 // its search for more feasible nodes.
 // 返回可行节点的数目，一旦找到，调度器停止搜索更多可行节点
 func (g *genericScheduler) numFeasibleNodesToFind(numAllNodes int32) (numNodes int32) {
+	// 对于一个小于100的节点，全部节点参与调度
+	// percentageOfNodesToScore 参数值是一个集群中所有节点的百分比，范围是1和100之间，0表示不启用
 	if numAllNodes < minFeasibleNodesToFind || g.percentageOfNodesToScore >= 100 {
 		return numAllNodes
 	}
 
 	adaptivePercentage := g.percentageOfNodesToScore
+	// 当 numAllNodes 大于100时，如果没有设置 percentageOfNodesToScore ，那么这里需要计算出一个值
 	if adaptivePercentage <= 0 {
 		basePercentageOfNodesToScore := int32(50)
 		adaptivePercentage = basePercentageOfNodesToScore - numAllNodes/125
@@ -352,6 +357,7 @@ func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *p
 			errCh.SendErrorWithCancel(err, cancel)
 			return
 		}
+		// 如果该节点合适，那么放入到feasibleNodes列表中
 		if fits {
 			length := atomic.AddInt32(&feasibleNodesLen, 1)
 			if length > numNodesToFind {
@@ -384,6 +390,7 @@ func (g *genericScheduler) findNodesThatPassFilters(ctx context.Context, prof *p
 	// 当找到配置的可行节点数后，停止搜索更多的节点, 调用 workqueue.ParallelizeUntil() 启动协程进行并行执行 checkNode
 	parallelize.Until(ctx, len(allNodes), checkNode)
 	processedNodes := int(feasibleNodesLen) + len(statuses)
+	// 设置下次开始寻找node的位置
 	g.nextStartNodeIndex = (g.nextStartNodeIndex + processedNodes) % len(allNodes)
 
 	feasibleNodes = feasibleNodes[:feasibleNodesLen]
@@ -502,11 +509,14 @@ func PodPassesFiltersOnNode(
 	// the nominated pods are treated as not running. We can't just assume the
 	// nominated pods are running because they are not running right now and in fact,
 	// they may end up getting scheduled to a different node.
+	// 待检查的 Node 是一个即将被抢占的节点，调度器就会对这个 Node ，将同样的 Predicates 算法运行两遍
 	for i := 0; i < 2; i++ {
 		stateToUse := state
 		nodeInfoToUse := info
+		// 处理优先级pod的逻辑
 		if i == 0 {
 			var err error
+			// 查找是否有优先级大于或等于当前pod的NominatedPods，然后加入到nodeInfoToUse中
 			podsAdded, stateToUse, nodeInfoToUse, err = addNominatedPods(ctx, ph, pod, state, info)
 			if err != nil {
 				return false, nil, err
@@ -516,6 +526,7 @@ func PodPassesFiltersOnNode(
 		}
 
 		// pkg/scheduler/framework/runtime/framework.go --> (f *frameworkImpl) RunFilterPlugins()
+		// 运行过滤器检查该pod是否能运行在该节点上
 		statusMap := ph.RunFilterPlugins(ctx, stateToUse, pod, nodeInfoToUse)
 		status = statusMap.Merge()
 		if !status.IsSuccess() && !status.IsUnschedulable() {
@@ -555,6 +566,7 @@ func (g *genericScheduler) prioritizeNodes(
 
 	// Run PreScore plugins.
 	// 4. score，比如处理弱亲和性，将preferredAffinity语法进行解析; 预评分插件集
+	// pkg/scheduler/framework/runtime/framework.go --> (f *frameworkImpl) RunPreScorePlugins()
 	preScoreStatus := prof.RunPreScorePlugins(ctx, state, pod, nodes)
 	if !preScoreStatus.IsSuccess() {
 		return nil, preScoreStatus.AsError()
@@ -562,6 +574,8 @@ func (g *genericScheduler) prioritizeNodes(
 
 	// Run the Score plugins.
 	// 5. 为节点打分; 评分插件集
+	// pkg/scheduler/framework/runtime/framework.go --> (f *frameworkImpl) RunScorePlugins()
+	// 在 pkg/scheduler/framework/runtime/framework.go 中实现赋值 Framework： var _ framework.Framework = &frameworkImpl{} 从而具有 RunScorePlugins 方法实现
 	scoresMap, scoreStatus := prof.RunScorePlugins(ctx, state, pod, nodes)
 	if !scoreStatus.IsSuccess() {
 		return nil, scoreStatus.AsError()
@@ -577,7 +591,7 @@ func (g *genericScheduler) prioritizeNodes(
 	// Summarize all scores.
 	// 归纳所有的分数
 	result := make(framework.NodeScoreList, 0, len(nodes))
-
+	// 将分数按照node维度进行汇总
 	for i := range nodes {
 		result = append(result, framework.NodeScore{Name: nodes[i].Name, Score: 0})
 		for j := range scoresMap {

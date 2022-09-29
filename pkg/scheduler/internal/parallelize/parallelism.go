@@ -38,7 +38,7 @@ func chunkSizeFor(n int) workqueue.Options {
 }
 
 // Until is a wrapper around workqueue.ParallelizeUntil to use in scheduling algorithms.
-// until 是 workqueue.ParallelizeUntil 的包装器，用于调度算法
+// workqueue.ParallelizeUntil 的包装器，用于调度算法
 func Until(ctx context.Context, pieces int, doWorkPiece workqueue.DoWorkPieceFunc) {
 	workqueue.ParallelizeUntil(ctx, parallelism, pieces, doWorkPiece, chunkSizeFor(pieces))
 }
