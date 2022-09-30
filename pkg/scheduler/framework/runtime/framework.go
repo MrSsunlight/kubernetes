@@ -538,6 +538,7 @@ func (f *frameworkImpl) runFilterPlugin(ctx context.Context, pl framework.Filter
 
 // RunPostFilterPlugins runs the set of configured PostFilter plugins until the first
 // Success or Error is met, otherwise continues to execute all plugins.
+// 运行配置的 PostFilter 插件集，直到遇到第一个 Success 或 Error，否则继续执行所有插件
 func (f *frameworkImpl) RunPostFilterPlugins(ctx context.Context, state *framework.CycleState, pod *v1.Pod, filteredNodeStatusMap framework.NodeToStatusMap) (_ *framework.PostFilterResult, status *framework.Status) {
 	startTime := time.Now()
 	defer func() {
@@ -545,6 +546,7 @@ func (f *frameworkImpl) RunPostFilterPlugins(ctx context.Context, state *framewo
 	}()
 
 	statuses := make(framework.PluginToStatus)
+	// postFilterPlugins 里面只有一个 defaultpreemption
 	for _, pl := range f.postFilterPlugins {
 		r, s := f.runPostFilterPlugin(ctx, pl, state, pod, filteredNodeStatusMap)
 		if s.IsSuccess() {
@@ -564,6 +566,8 @@ func (f *frameworkImpl) runPostFilterPlugin(ctx context.Context, pl framework.Po
 		return pl.PostFilter(ctx, state, pod, filteredNodeStatusMap)
 	}
 	startTime := time.Now()
+	// pkg/scheduler/algorithmprovider/registry.go --> getDefaultConfig() 中声明 PostFilter 插件
+	// 在 pkg/scheduler/framework/plugins/defaultpreemption/default_preemption.go 中实现 framework.PostFilterPlugin 接口: var _ framework.PostFilterPlugin = &DefaultPreemption{}
 	r, s := pl.PostFilter(ctx, state, pod, filteredNodeStatusMap)
 	f.metricsRecorder.observePluginDurationAsync(postFilter, pl.Name(), s, metrics.SinceInSeconds(startTime))
 	return r, s

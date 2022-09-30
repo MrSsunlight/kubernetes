@@ -547,7 +547,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 	// 进行实际调度，默认调度算法是 DefaultProvider，也是具体执行的调度算法, 选出合适的node
 	// Algorithm --> genericScheduler; func (g *genericScheduler) Schedule(...) [pkg/scheduler/core/generic_scheduler.go]
 	scheduleResult, err := sched.Algorithm.Schedule(schedulingCycleCtx, prof, state, pod)
-	// 如果筛选过程出错
+	// 如果 node 筛选过程出错, 进行抢占逻辑
 	if err != nil {
 		// Schedule() may have failed because the pod would not fit on any host, so we try to
 		// preempt, with the expectation that the next time the pod is tried for scheduling it
@@ -572,6 +572,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 				} else {
 					klog.V(5).Infof("Status after running PostFilter plugins for pod %v/%v: %v", pod.Namespace, pod.Name, status)
 				}
+				// 抢占成功后，将 nominatedNodeName 设置为被抢占的 Node 的名字，然后重新进入下一个调度周期
 				if status.IsSuccess() && result != nil {
 					// 被提名的节点
 					nominatedNode = result.NominatedNodeName

@@ -55,6 +55,7 @@ type DefaultPreemption struct {
 	pdbLister policylisters.PodDisruptionBudgetLister
 }
 
+// 实现 framework.PostFilterPlugin 接口
 var _ framework.PostFilterPlugin = &DefaultPreemption{}
 
 // Name returns name of the plugin. It is used in logs, etc.
@@ -80,6 +81,7 @@ func (pl *DefaultPreemption) PostFilter(ctx context.Context, state *framework.Cy
 		metrics.DeprecatedSchedulingDuration.WithLabelValues(metrics.PreemptionEvaluation).Observe(metrics.SinceInSeconds(preemptionStartTime))
 	}()
 
+	// 执行抢占
 	nnn, err := pl.preempt(ctx, state, pod, m)
 	if err != nil {
 		return nil, framework.NewStatus(framework.Error, err.Error())
@@ -100,12 +102,22 @@ func (pl *DefaultPreemption) PostFilter(ctx context.Context, state *framework.Cy
 // other pods with the same priority. The nominated pod prevents other pods from
 // using the nominated resources and the nominated pod could take a long time
 // before it is retried after many other pending pods.
+
+/*
+查找具有可以抢占的pod的节点，以便为“pod”调度腾出空间。它选择一个节点并抢占该节点上的pod，并返回
+1)被选中或抢占的节点名称
+2)任何可能的错误。 preempt 不会更新其快照。 它使用调度周期中使用的相同快照。 这是为了避免 preempt 找到可行节点而不抢占任何 pod 的情况。
+当调度队列中有许多待处理的 pod 时，指定（被提名）的 pod 将返回队列并在其他具有相同优先级的pod后面。
+指定（被提名）的 pod 会阻止其他 pod 使用指定（被提名）的资源，并且指定（被提名）的 pod 可能需要很长时间才能在许多其他挂起的 pod 之后重试.
+*/
 func (pl *DefaultPreemption) preempt(ctx context.Context, state *framework.CycleState, pod *v1.Pod, m framework.NodeToStatusMap) (string, error) {
 	cs := pl.fh.ClientSet()
 	ph := pl.fh.PreemptHandle()
+	// 返回node列表
 	nodeLister := pl.fh.SnapshotSharedLister().NodeInfos()
 
 	// 0) Fetch the latest version of <pod>.
+	// 获取最新版本的pod (从Informer缓存而不是API服务器中获取pod)
 	// TODO(Huang-Wei): get pod from informer cache instead of API server.
 	pod, err := util.GetUpdatedPod(cs, pod)
 	if err != nil {
@@ -114,12 +126,14 @@ func (pl *DefaultPreemption) preempt(ctx context.Context, state *framework.Cycle
 	}
 
 	// 1) Ensure the preemptor is eligible to preempt other pods.
+	// 确认抢占者是否能够进行抢占，如果对应的node节点上的pod正在优雅退出（Graceful Termination ），那么就不应该进行抢占
 	if !PodEligibleToPreemptOthers(pod, nodeLister, m[pod.Status.NominatedNodeName]) {
 		klog.V(5).Infof("Pod %v/%v is not eligible for more preemption.", pod.Namespace, pod.Name)
 		return "", nil
 	}
 
 	// 2) Find all preemption candidates.
+	// 查找所有抢占候选者
 	candidates, err := FindCandidates(ctx, cs, state, pod, m, ph, nodeLister, pl.pdbLister)
 	if err != nil || len(candidates) == 0 {
 		return "", err

@@ -300,6 +300,8 @@ type PostFilterPlugin interface {
 	// Optionally, a non-nil PostFilterResult may be returned along with a Success status. For example,
 	// a preemption plugin may choose to return nominatedNodeName, so that framework can reuse that to update the
 	// preemptor pod's .spec.status.nominatedNodeName field.
+
+	// pkg/scheduler/algorithmprovider/registry.go --> getDefaultConfig() 中声明  --> pkg/scheduler/framework/plugins/defaultpreemption/default_preemption.go 中实现
 	PostFilter(ctx context.Context, state *CycleState, pod *v1.Pod, filteredNodeStatusMap NodeToStatusMap) (*PostFilterResult, *Status)
 }
 
