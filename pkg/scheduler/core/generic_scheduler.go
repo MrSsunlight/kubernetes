@@ -478,7 +478,7 @@ func addNominatedPods(ctx context.Context, ph framework.PreemptHandle, pod *v1.P
 // TODO: move this out so that plugins don't need to depend on <core> pkg.
 // 检查 NodeInfo 给定的节点是否满足过滤器插件。
 // 这个函数是从两个不同的地方调用的：Schedule（调度） 和 Preempt（抢占）。 当从 Schedule 调用它时，想要测试该 pod 是否可以在该节点上调度，
-// 该节点上的所有现有 pod 以及指定在该节点上运行的nominated pods(被录用的pods)更高且相等优先级的 pod。
+// 该节点上的所有现有 pod 以及指定在该节点上运行的 nominated pods(被录用的pods)更高且相等优先级的 pod。
 // 当从 Preempt 调用时，将会去掉将要驱逐的 preemption 的受害者并添加指定的 Pod。 受害者的移除由 SelectVictimsOnNode() 完成。
 // Preempt 在调用此函数之前从 PreFilter 状态和 NodeInfo 中删除受害者,在这里会执行两遍逻辑，其中主要是为了检查 nominated pods存在与否产生的不同结果。
 func PodPassesFiltersOnNode(

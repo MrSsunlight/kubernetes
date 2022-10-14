@@ -367,6 +367,7 @@ func UpdatePodCondition(status *v1.PodStatus, condition *v1.PodCondition) bool {
 }
 
 // GetPodPriority returns priority of the given pod.
+// 返回给定 pod 的优先级
 func GetPodPriority(pod *v1.Pod) int32 {
 	if pod.Spec.Priority != nil {
 		return *pod.Spec.Priority
