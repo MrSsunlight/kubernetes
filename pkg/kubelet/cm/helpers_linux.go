@@ -282,6 +282,8 @@ func GetPodCgroupNameSuffix(podUID types.UID) string {
 }
 
 // NodeAllocatableRoot returns the literal cgroup path for the node allocatable cgroup
+
+// 返回节点可分配的cgroup的字面路径
 func NodeAllocatableRoot(cgroupRoot string, cgroupsPerQOS bool, cgroupDriver string) string {
 	nodeAllocatableRoot := ParseCgroupfsToCgroupName(cgroupRoot)
 	if cgroupsPerQOS {
@@ -294,6 +296,8 @@ func NodeAllocatableRoot(cgroupRoot string, cgroupsPerQOS bool, cgroupDriver str
 }
 
 // GetKubeletContainer returns the cgroup the kubelet will use
+
+// 返回kubelet将使用的cgroup
 func GetKubeletContainer(kubeletCgroups string) (string, error) {
 	if kubeletCgroups == "" {
 		cont, err := getContainer(os.Getpid())
@@ -306,6 +310,8 @@ func GetKubeletContainer(kubeletCgroups string) (string, error) {
 }
 
 // GetRuntimeContainer returns the cgroup used by the container runtime
+
+// 返回容器运行时使用的cgroup
 func GetRuntimeContainer(containerRuntime, runtimeCgroups string) (string, error) {
 	if containerRuntime == "docker" {
 		cont, err := getContainerNameForProcess(dockerProcessName, dockerPidFile)

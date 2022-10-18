@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 /*
@@ -207,6 +208,8 @@ func validateSystemRequirements(mountUtil mount.Interface) (features, error) {
 // TODO(vmarmol): Add limits to the system containers.
 // Takes the absolute name of the specified containers.
 // Empty container name disables use of the specified container.
+
+// 获取指定容器的绝对名称。将禁止使用空的容器名称
 func NewContainerManager(mountUtil mount.Interface, cadvisorInterface cadvisor.Interface, nodeConfig NodeConfig, failSwapOn bool, devicePluginEnabled bool, recorder record.EventRecorder) (ContainerManager, error) {
 	subsystems, err := GetCgroupSubsystems()
 	if err != nil {

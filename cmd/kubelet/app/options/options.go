@@ -63,6 +63,7 @@ type KubeletFlags struct {
 
 	// HostnameOverride is the hostname used to identify the kubelet instead
 	// of the actual hostname.
+	// 是用于识别 kubelet 的主机名，而不是实际的主机名
 	HostnameOverride string
 	// NodeIP is IP address of the node.
 	// If set, kubelet will use this IP address for the node.

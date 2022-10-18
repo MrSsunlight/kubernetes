@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 /*
@@ -50,6 +51,8 @@ func (i *imageFsInfoProvider) ImageFsInfoLabel() (string, error) {
 }
 
 // NewImageFsInfoProvider returns a provider for the specified runtime configuration.
+
+// 返回指定 runtime 配置的提供者
 func NewImageFsInfoProvider(runtime, runtimeEndpoint string) ImageFsInfoProvider {
 	return &imageFsInfoProvider{runtime: runtime, runtimeEndpoint: runtimeEndpoint}
 }

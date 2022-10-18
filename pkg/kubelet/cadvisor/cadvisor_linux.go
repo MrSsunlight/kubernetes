@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 /*
@@ -85,6 +86,7 @@ func init() {
 }
 
 // New creates a new cAdvisor Interface for linux systems.
+// 为linux系统创建一个新的 cAdvisor 接口
 func New(imageFsInfoProvider ImageFsInfoProvider, rootPath string, cgroupRoots []string, usingLegacyStats bool) (Interface, error) {
 	sysFs := sysfs.NewRealSysFs()
 
