@@ -174,6 +174,7 @@ func NewImageGCManager(runtime container.Runtime, statsProvider StatsProvider, r
 	return im, nil
 }
 
+// 开启两个协程管理更新、缓存镜像
 func (im *realImageGCManager) Start() {
 	go wait.Until(func() {
 		// Initial detection make detected time "unknown" in the past.
@@ -181,6 +182,7 @@ func (im *realImageGCManager) Start() {
 		if im.initialized {
 			ts = time.Now()
 		}
+		// 找出所有的image，并删除不再使用的image
 		_, err := im.detectImages(ts)
 		if err != nil {
 			klog.Warningf("[imageGCManager] Failed to monitor images: %v", err)
@@ -190,6 +192,7 @@ func (im *realImageGCManager) Start() {
 	}, 5*time.Minute, wait.NeverStop)
 
 	// Start a goroutine periodically updates image cache.
+	// 启动一个协程定期更新镜像缓存
 	go wait.Until(func() {
 		images, err := im.runtime.ListImages()
 		if err != nil {

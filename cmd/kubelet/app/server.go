@@ -203,10 +203,13 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 				// We must enforce flag precedence by re-parsing the command line into the new object.
 				// This is necessary to preserve backwards-compatibility across binary upgrades.
 				// See issue #56171 for more details.
+				// 通过将命令行解析成配置文件的方式提升其优先级
 				if err := kubeletConfigFlagPrecedence(kubeletConfig, args); err != nil {
 					klog.Fatal(err)
 				}
 				// update feature gates based on new config
+				// 基于新的配置进行更新 feature gates
+				// https://kubernetes.io/zh-cn/docs/reference/command-line-tools-reference/feature-gates/
 				if err := utilfeature.DefaultMutableFeatureGate.SetFromMap(kubeletConfig.FeatureGates); err != nil {
 					klog.Fatal(err)
 				}
@@ -264,6 +267,7 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 			kubeletDeps.KubeletConfigController = kubeletConfigController
 
 			// set up signal context here in order to be reused by kubelet and docker shim
+			// 设置信号上下文，以便被kubelet和docker shim重复使用
 			ctx := genericapiserver.SetupSignalContext()
 
 			// run the kubelet
@@ -320,6 +324,9 @@ func newFakeFlagSet(fs *pflag.FlagSet) *pflag.FlagSet {
 // We must enforce flag precedence by re-parsing the command line into the new object.
 // This is necessary to preserve backwards-compatibility across binary upgrades.
 // See issue #56171 for more details.
+
+// 重新解析KubeletConfiguration对象上的标志。我们必须通过将命令行重新解析到新对象中来加强标志优先级。
+// 这对于保持跨二进制升级的向后兼容性是必要的
 func kubeletConfigFlagPrecedence(kc *kubeletconfiginternal.KubeletConfiguration, args []string) error {
 	// We use a throwaway kubeletFlags and a fake global flagset to avoid double-parses,
 	// as some Set implementations accumulate values from multiple flag invocations.
@@ -493,7 +500,7 @@ func run(ctx context.Context, s *options.KubeletServer, kubeDeps *kubelet.Depend
 	}
 
 	// Obtain Kubelet Lock File
-	// 获取Kubelet锁定文件
+	// 获取Kubelet文件锁定
 	if s.ExitOnLockContention && s.LockFilePath == "" {
 		return errors.New("cannot exit on lock file contention: no lock file specified")
 	}
@@ -643,7 +650,7 @@ func run(ctx context.Context, s *options.KubeletServer, kubeDeps *kubelet.Depend
 		cgroupRoots = append(cgroupRoots, s.SystemCgroups)
 	}
 
-	// 构建 镜像资源 提供商
+	// 检测 容器监控（根据容器配置生成对应 cadvisor 接口）
 	if kubeDeps.CAdvisorInterface == nil {
 		imageFsInfoProvider := cadvisor.NewImageFsInfoProvider(s.ContainerRuntime, s.RemoteRuntimeEndpoint)
 		kubeDeps.CAdvisorInterface, err = cadvisor.New(imageFsInfoProvider, s.RootDirectory, cgroupRoots, cadvisor.UsingLegacyCadvisorStats(s.ContainerRuntime, s.RemoteRuntimeEndpoint))
@@ -653,6 +660,7 @@ func run(ctx context.Context, s *options.KubeletServer, kubeDeps *kubelet.Depend
 	}
 
 	// Setup event recorder if required.
+	// 事件记录器
 	makeEventRecorder(kubeDeps, nodeName)
 
 	if kubeDeps.ContainerManager == nil {
@@ -784,7 +792,7 @@ func run(ctx context.Context, s *options.KubeletServer, kubeDeps *kubelet.Depend
 		klog.Warning(err)
 	}
 
-	// 提前启动运行时服务
+	// 提前启动运行时服务 （启动容器、配置网络 CRI等）
 	err = kubelet.PreInitRuntimeService(&s.KubeletConfiguration,
 		kubeDeps, &s.ContainerRuntimeOptions,
 		s.ContainerRuntime,
@@ -1127,10 +1135,13 @@ func RunKubelet(kubeServer *options.KubeletServer, kubeDeps *kubelet.Dependencie
 	// 设置事件记录器
 	makeEventRecorder(kubeDeps, nodeName)
 
+	// 系统中可用的功能集合初始化
 	capabilities.Initialize(capabilities.Capabilities{
+		// 特权开关
 		AllowPrivileged: true,
 	})
 
+	// 设置首选 docker 配置路径
 	credentialprovider.SetPreferredDockercfgPath(kubeServer.RootDirectory)
 	klog.V(2).Infof("Using root directory: %v", kubeServer.RootDirectory)
 
@@ -1138,6 +1149,7 @@ func RunKubelet(kubeServer *options.KubeletServer, kubeDeps *kubelet.Dependencie
 		kubeDeps.OSInterface = kubecontainer.RealOS{}
 	}
 
+	// 创建并初始化 kubelet
 	k, err := createAndInitKubelet(&kubeServer.KubeletConfiguration,
 		kubeDeps,
 		&kubeServer.ContainerRuntimeOptions,
@@ -1183,6 +1195,8 @@ func RunKubelet(kubeServer *options.KubeletServer, kubeDeps *kubelet.Dependencie
 
 	// process pods and exit.
 	if runOnce {
+		// 从新配置中运行或更新pod
+		// pkg/kubelet/runonce.go --> func (kl *Kubelet) RunOnce()
 		if _, err := k.RunOnce(podCfg.Updates()); err != nil {
 			return fmt.Errorf("runonce failed: %v", err)
 		}
@@ -1200,14 +1214,19 @@ func startKubelet(k kubelet.Bootstrap, podCfg *config.PodConfig, kubeCfg *kubele
 	go k.Run(podCfg.Updates())
 
 	// start the kubelet server
+	// 启动 kubelet server
 	if enableServer {
+		// 运行 http server
+		// pkg/kubelet/kubelet.go --> (kl *Kubelet) ListenAndServe()
 		go k.ListenAndServe(net.ParseIP(kubeCfg.Address), uint(kubeCfg.Port), kubeDeps.TLSOptions, kubeDeps.Auth,
 			enableCAdvisorJSONEndpoints, kubeCfg.EnableDebuggingHandlers, kubeCfg.EnableContentionProfiling, kubeCfg.EnableSystemLogHandler)
-
 	}
+	// 以只读模式运行 kubelet HTTP 服务器
 	if kubeCfg.ReadOnlyPort > 0 {
 		go k.ListenAndServeReadOnly(net.ParseIP(kubeCfg.Address), uint(kubeCfg.ReadOnlyPort), enableCAdvisorJSONEndpoints)
 	}
+
+	// 运行 pod 资源的 grpc 服务
 	if utilfeature.DefaultFeatureGate.Enabled(features.KubeletPodResources) {
 		go k.ListenAndServePodResources()
 	}

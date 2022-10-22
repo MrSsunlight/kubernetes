@@ -42,6 +42,8 @@ type RunPodResult struct {
 }
 
 // RunOnce polls from one configuration update and run the associated pods.
+
+// 从一个配置更新中进行投票，并运行相关的pods
 func (kl *Kubelet) RunOnce(updates <-chan kubetypes.PodUpdate) ([]RunPodResult, error) {
 	// Setup filesystem directories.
 	if err := kl.setupDataDirs(); err != nil {
@@ -67,6 +69,8 @@ func (kl *Kubelet) RunOnce(updates <-chan kubetypes.PodUpdate) ([]RunPodResult, 
 }
 
 // runOnce runs a given set of pods and returns their status.
+
+// 运行一组给定的 pod 并返回它们的状态
 func (kl *Kubelet) runOnce(pods []*v1.Pod, retryDelay time.Duration) (results []RunPodResult, err error) {
 	ch := make(chan RunPodResult)
 	admitted := []*v1.Pod{}

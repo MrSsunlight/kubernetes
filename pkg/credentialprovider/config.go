@@ -71,6 +71,8 @@ var (
 )
 
 // SetPreferredDockercfgPath set preferred docker config path
+
+// 设置首选docker配置路径
 func SetPreferredDockercfgPath(path string) {
 	preferredPathLock.Lock()
 	defer preferredPathLock.Unlock()

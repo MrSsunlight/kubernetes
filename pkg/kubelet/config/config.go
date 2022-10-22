@@ -99,6 +99,8 @@ func (c *PodConfig) SeenAllSources(seenSources sets.String) bool {
 }
 
 // Updates returns a channel of updates to the configuration, properly denormalized.
+
+// 返回一个对配置进行更新的通道，并正确地进行了规范化处理
 func (c *PodConfig) Updates() <-chan kubetypes.PodUpdate {
 	return c.updates
 }

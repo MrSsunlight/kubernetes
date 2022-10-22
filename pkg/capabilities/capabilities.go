@@ -53,6 +53,8 @@ var capInstance struct {
 }
 
 // Initialize the capability set.  This can only be done once per binary, subsequent calls are ignored.
+
+// 功能集。这只能在每个二进制文件中执行一次，后续调用将被忽略
 func Initialize(c Capabilities) {
 	// Only do this once
 	capInstance.once.Do(func() {

@@ -912,6 +912,7 @@ type Kubelet struct {
 	volumePluginMgr *volume.VolumePluginMgr
 
 	// Handles container probing.
+	// 处理容器探测
 	probeManager prober.Manager
 	// Manages container health check results.
 	livenessManager proberesults.Manager
@@ -947,6 +948,7 @@ type Kubelet struct {
 	serverCertificateManager certificate.Manager
 
 	// Syncs pods statuses with apiserver; also used as a cache of statuses.
+	// 与apiserver同步pods的状态；也用作状态的缓存
 	statusManager status.Manager
 
 	// VolumeManager runs a set of asynchronous loops that figure out which
@@ -1037,6 +1039,7 @@ type Kubelet struct {
 	oomWatcher oomwatcher.Watcher
 
 	// Monitor resource usage
+	// 监控资源使用情况
 	resourceAnalyzer serverstats.ResourceAnalyzer
 
 	// Whether or not we should have the QOS cgroup hierarchy for resource management
@@ -1166,6 +1169,7 @@ type Kubelet struct {
 	nodeStatusMaxImages int32
 
 	// Handles RuntimeClass objects for the Kubelet.
+	// 处理Kubelet的RuntimeClass对象
 	runtimeClassManager *runtimeclass.Manager
 }
 
@@ -1259,6 +1263,8 @@ func (kl *Kubelet) StartGarbageCollection() {
 
 // initializeModules will initialize internal modules that do not require the container runtime to be up.
 // Note that the modules here must not depend on modules that are not initialized here.
+
+// 将初始化不需要容器运行时启动的内部模块
 func (kl *Kubelet) initializeModules() error {
 	// Prometheus metrics.
 	metrics.Register(
@@ -1270,11 +1276,13 @@ func (kl *Kubelet) initializeModules() error {
 	servermetrics.Register()
 
 	// Setup filesystem directories.
+	// 创建文件目录
 	if err := kl.setupDataDirs(); err != nil {
 		return err
 	}
 
 	// If the container logs directory does not exist, create it.
+	// 启动 certificate manager
 	if _, err := os.Stat(ContainerLogsDir); err != nil {
 		if err := kl.os.MkdirAll(ContainerLogsDir, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %q: %v", ContainerLogsDir, err)
@@ -1282,19 +1290,24 @@ func (kl *Kubelet) initializeModules() error {
 	}
 
 	// Start the image manager.
+	// 启动 镜像manager（启动两个协程 删除、更新、缓存镜像）
+	// pkg/kubelet/images/image_gc_manager.go --> func (im *realImageGCManager) Start()
 	kl.imageManager.Start()
 
 	// Start the certificate manager if it was enabled.
+	// 启动证书管理器, 证书相关
 	if kl.serverCertificateManager != nil {
 		kl.serverCertificateManager.Start()
 	}
 
 	// Start out of memory watcher.
+	// 启动 oomWatcher
 	if err := kl.oomWatcher.Start(kl.nodeRef); err != nil {
 		return fmt.Errorf("failed to start OOM watcher %v", err)
 	}
 
 	// Start resource analyzer
+	// 启动 resource analyzer(监控资源使用情况),刷新volume stats到缓存中
 	kl.resourceAnalyzer.Start()
 
 	return nil
@@ -1341,46 +1354,64 @@ func (kl *Kubelet) initializeRuntimeDependentModules() {
 
 // 启动Kubelet，响应配置更新
 func (kl *Kubelet) Run(updates <-chan kubetypes.PodUpdate) {
+	// 注册 logServer
 	if kl.logServer == nil {
 		kl.logServer = http.StripPrefix("/logs/", http.FileServer(http.Dir("/var/log/")))
 	}
+	// 如果单机模式 不会发送状态
 	if kl.kubeClient == nil {
 		klog.Warning("No api server defined - no node status update will be sent.")
 	}
 
 	// Start the cloud provider sync manager
+	// 启动云提供商的同步管理器
+	// Cloud Provider 扩展相关：https://kubernetes.feisky.xyz/extension/cloud-provider
 	if kl.cloudResourceSyncManager != nil {
 		go kl.cloudResourceSyncManager.Run(wait.NeverStop)
 	}
 
+	// 首先启动不依赖 container runtime 的一些模块
 	if err := kl.initializeModules(); err != nil {
 		kl.recorder.Eventf(kl.nodeRef, v1.EventTypeWarning, events.KubeletSetupFailed, err.Error())
 		klog.Fatal(err)
 	}
 
 	// Start volume manager
+	// 启动 volume manager
 	go kl.volumeManager.Run(kl.sourcesReady, wait.NeverStop)
 
 	if kl.kubeClient != nil {
 		// Start syncing node status immediately, this may set up things the runtime needs to run.
+		// 定时同步 Node 状态
 		go wait.Until(kl.syncNodeStatus, kl.nodeStatusUpdateFrequency, wait.NeverStop)
+		// 循环检查节点索引器的缓存，以确定何时应用CIDR，并尝试立即更新Pod CIDR
 		go kl.fastStatusUpdateOnce()
 
 		// start syncing lease
+		// NodeLease 机制, 开始同步租约
 		go kl.nodeLeaseController.Run(wait.NeverStop)
 	}
+	// 定时更新 Runtime 状态
 	go wait.Until(kl.updateRuntimeUp, 5*time.Second, wait.NeverStop)
 
 	// Set up iptables util rules
+	// 定时同步 iptables 规则
 	if kl.makeIPTablesUtilChains {
 		kl.initNetworkUtil()
 	}
 
 	// Start a goroutine responsible for killing pods (that are not properly
 	// handled by pod workers).
+	// 获取 pk.podKillingCh 异常pod， 并定时清理异常 pod
 	go wait.Until(kl.podKiller.PerformPodKillingWork, 1*time.Second, wait.NeverStop)
 
 	// Start component sync loops.
+	/*
+		启动 statusManager、probeManager、runtimeClassManager
+			statusManager: 与 apiserver 同步 pods 的状态；也用作状态的缓存
+			probeManager: 处理容器探测
+			runtimeClassManager: 处理Kubelet的RuntimeClass对象
+	*/
 	kl.statusManager.Start()
 	kl.probeManager.Start()
 
@@ -1390,7 +1421,9 @@ func (kl *Kubelet) Run(updates <-chan kubetypes.PodUpdate) {
 	}
 
 	// Start the pod lifecycle event generator.
+	// 启动 pleg 该模块主要用于周期性地向 container runtime 刷新当前所有容器的状态
 	kl.pleg.Start()
+	// 启动 kublet 事件循环
 	kl.syncLoop(updates, kl)
 }
 
@@ -2172,16 +2205,19 @@ func (kl *Kubelet) ResyncInterval() time.Duration {
 }
 
 // ListenAndServe runs the kubelet HTTP server.
+// 运行 http server
 func (kl *Kubelet) ListenAndServe(address net.IP, port uint, tlsOptions *server.TLSOptions, auth server.AuthInterface, enableCAdvisorJSONEndpoints, enableDebuggingHandlers, enableContentionProfiling, enableSystemLogHandler bool) {
 	server.ListenAndServeKubeletServer(kl, kl.resourceAnalyzer, address, port, tlsOptions, auth, enableCAdvisorJSONEndpoints, enableDebuggingHandlers, enableContentionProfiling, kl.redirectContainerStreaming, enableSystemLogHandler, kl.criHandler)
 }
 
 // ListenAndServeReadOnly runs the kubelet HTTP server in read-only mode.
+// 以只读模式运行kubelet HTTP服务器
 func (kl *Kubelet) ListenAndServeReadOnly(address net.IP, port uint, enableCAdvisorJSONEndpoints bool) {
 	server.ListenAndServeKubeletReadOnlyServer(kl, kl.resourceAnalyzer, address, port, enableCAdvisorJSONEndpoints)
 }
 
 // ListenAndServePodResources runs the kubelet podresources grpc service
+// 运行 kubelet pod 资源 grpc 服务
 func (kl *Kubelet) ListenAndServePodResources() {
 	socket, err := util.LocalEndpoint(kl.getPodResourcesDir(), podresources.Socket)
 	if err != nil {
@@ -2210,6 +2246,8 @@ func (kl *Kubelet) cleanUpContainersInPod(podID types.UID, exitedContainerID str
 // a runtime update and a node status update. Function returns after one successful node status update.
 // Function is executed only during Kubelet start which improves latency to ready node by updating
 // pod CIDR, runtime status and node statuses ASAP.
+
+// 启动一个循环，检查内部节点索引器的缓存，以确定何时应用CIDR，并尝试立即更新Pod CIDR
 func (kl *Kubelet) fastStatusUpdateOnce() {
 	for {
 		time.Sleep(100 * time.Millisecond)
