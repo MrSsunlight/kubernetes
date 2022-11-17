@@ -24,9 +24,9 @@ import (
 	"sync"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
-	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -178,6 +178,7 @@ func NewImageGCManager(runtime container.Runtime, statsProvider StatsProvider, r
 func (im *realImageGCManager) Start() {
 	go wait.Until(func() {
 		// Initial detection make detected time "unknown" in the past.
+		// 初始检测使检测到的时间在过去 "未知" 的情况下
 		var ts time.Time
 		if im.initialized {
 			ts = time.Now()
@@ -194,6 +195,7 @@ func (im *realImageGCManager) Start() {
 	// Start a goroutine periodically updates image cache.
 	// 启动一个协程定期更新镜像缓存
 	go wait.Until(func() {
+		// 调用容器接口，获取最新的image
 		images, err := im.runtime.ListImages()
 		if err != nil {
 			klog.Warningf("[imageGCManager] Failed to update image list: %v", err)

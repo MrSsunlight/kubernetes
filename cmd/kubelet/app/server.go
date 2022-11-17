@@ -267,7 +267,7 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 			kubeletDeps.KubeletConfigController = kubeletConfigController
 
 			// set up signal context here in order to be reused by kubelet and docker shim
-			// 设置信号上下文，以便被kubelet和docker shim重复使用
+			// 设置信号上下文，以便被 kubelet 和 docker shim 重复使用
 			ctx := genericapiserver.SetupSignalContext()
 
 			// run the kubelet
@@ -421,6 +421,7 @@ func UnsecuredDependencies(s *options.KubeletServer, featureGate featuregate.Fea
 
 // 运行指定的 KubeletServer 和给定的依赖项
 func Run(ctx context.Context, s *options.KubeletServer, kubeDeps *kubelet.Dependencies, featureGate featuregate.FeatureGate) error {
+	// log 配置
 	logOption := logs.NewOptions()
 	logOption.LogFormat = s.Logging.Format
 	logOption.Apply()
@@ -530,6 +531,7 @@ func run(ctx context.Context, s *options.KubeletServer, kubeDeps *kubelet.Depend
 	}
 
 	// About to get clients and such, detect standaloneMode
+	// 根据配置判断是否独立模式
 	standaloneMode := true
 	if len(s.KubeConfig) > 0 {
 		standaloneMode = false
@@ -614,6 +616,7 @@ func run(ctx context.Context, s *options.KubeletServer, kubeDeps *kubelet.Depend
 		}
 	}
 
+	// 认证没配置就使用默认的
 	if kubeDeps.Auth == nil {
 		auth, runAuthenticatorCAReload, err := BuildAuth(nodeName, kubeDeps.KubeClient, s.KubeletConfiguration)
 		if err != nil {
@@ -787,6 +790,7 @@ func run(ctx context.Context, s *options.KubeletServer, kubeDeps *kubelet.Depend
 	utilruntime.ReallyCrash = s.ReallyCrashForTesting
 
 	// TODO(vmarmol): Do this through container config.
+	// 理解为 OOM 阈值
 	oomAdjuster := kubeDeps.OOMAdjuster
 	if err := oomAdjuster.ApplyOOMScoreAdj(0, int(s.OOMScoreAdj)); err != nil {
 		klog.Warning(err)
@@ -1189,11 +1193,13 @@ func RunKubelet(kubeServer *options.KubeletServer, kubeDeps *kubelet.Dependencie
 	}
 	podCfg := kubeDeps.PodConfig
 
+	// 检测文件描述符最大限制
 	if err := rlimit.SetNumFiles(uint64(kubeServer.MaxOpenFiles)); err != nil {
 		klog.Errorf("Failed to set rlimit on max file handles: %v", err)
 	}
 
 	// process pods and exit.
+	// 保证只能启动一个
 	if runOnce {
 		// 从新配置中运行或更新pod
 		// pkg/kubelet/runonce.go --> func (kl *Kubelet) RunOnce()
@@ -1210,24 +1216,26 @@ func RunKubelet(kubeServer *options.KubeletServer, kubeDeps *kubelet.Dependencie
 
 func startKubelet(k kubelet.Bootstrap, podCfg *config.PodConfig, kubeCfg *kubeletconfiginternal.KubeletConfiguration, kubeDeps *kubelet.Dependencies, enableCAdvisorJSONEndpoints, enableServer bool) {
 	// start the kubelet
-	// pkg/kubelet/kubelet.go --> (kl *Kubelet) Run()
+	// 启动 kubelet		pkg/kubelet/kubelet.go --> (kl *Kubelet) Run()
 	go k.Run(podCfg.Updates())
 
 	// start the kubelet server
-	// 启动 kubelet server
+	// 启动 kubelet http server
 	if enableServer {
 		// 运行 http server
-		// pkg/kubelet/kubelet.go --> (kl *Kubelet) ListenAndServe()
+		// pkg/kubelet/kubelet.go --> (kl *Kubelet) ListenAndServe()  --> pkg/kubelet/server/server.go
 		go k.ListenAndServe(net.ParseIP(kubeCfg.Address), uint(kubeCfg.Port), kubeDeps.TLSOptions, kubeDeps.Auth,
 			enableCAdvisorJSONEndpoints, kubeCfg.EnableDebuggingHandlers, kubeCfg.EnableContentionProfiling, kubeCfg.EnableSystemLogHandler)
 	}
-	// 以只读模式运行 kubelet HTTP 服务器
+	// 以只读模式运行 kubelet HTTP server
 	if kubeCfg.ReadOnlyPort > 0 {
+		// pkg/kubelet/kubelet.go --> (kl *Kubelet) ListenAndServeReadOnly()
 		go k.ListenAndServeReadOnly(net.ParseIP(kubeCfg.Address), uint(kubeCfg.ReadOnlyPort), enableCAdvisorJSONEndpoints)
 	}
 
 	// 运行 pod 资源的 grpc 服务
 	if utilfeature.DefaultFeatureGate.Enabled(features.KubeletPodResources) {
+		// pkg/kubelet/kubelet.go --> (kl *Kubelet) ListenAndServePodResources()
 		go k.ListenAndServePodResources()
 	}
 }
