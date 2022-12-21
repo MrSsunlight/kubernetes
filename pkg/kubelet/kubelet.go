@@ -177,7 +177,7 @@ const (
 
 // SyncHandler is an interface implemented by Kubelet, for testability
 type SyncHandler interface {
-	HandlePodAdditions(pods []*v1.Pod)
+	HandlePodAdditions(pods []*v1.Pod) // pkg/kubelet/kubelet.go
 	HandlePodUpdates(pods []*v1.Pod)
 	HandlePodRemoves(pods []*v1.Pod)
 	HandlePodReconcile(pods []*v1.Pod)
@@ -335,6 +335,8 @@ func PreInitRuntimeService(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 
 // NewMainKubelet instantiates a new Kubelet object along with all the required internal modules.
 // No initialization of Kubelet and its modules should happen here.
+
+// 实例化一个新的Kubelet对象以及所有需要的内部模块
 func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	kubeDeps *Dependencies,
 	crOptions *config.ContainerRuntimeOptions,
@@ -1907,6 +1909,9 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 	select {
 	// 读取配置变化的 chan
 	case u, open := <-configCh:
+		// configCh读取配置事件的管道，该模块将同时 watch 3 个不同来源的 pod 信息的变化（file，http，apiserver），
+		// 一旦某个来源的 pod 信息发生了更新（创建/更新/删除），这个 channel 中就会出现被更新的 pod 信息和更新的具体操作
+
 		// Update from a config source; dispatch it to the right handler
 		// callback.
 		if !open {
@@ -1921,6 +1926,7 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 			// ADD as if they are new pods. These pods will then go through the
 			// admission process and *may* be rejected. This can be resolved
 			// once we have checkpointing.
+			// pkg/kubelet/kubelet.go --> func (kl *Kubelet) HandlePodAdditions(pods []*v1.Pod)
 			handler.HandlePodAdditions(u.Pods)
 		case kubetypes.UPDATE:
 			klog.V(2).Infof("SyncLoop (UPDATE, %q): %q", u.Source, format.PodsWithDeletionTimestamps(u.Pods))
@@ -1944,14 +1950,21 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 
 		kl.sourcesReady.AddSource(u.Source)
 
-	// 读取PLEG更新的 chan
+	// 监听多个 channel，当发现任何一个 channel 有数据就交给 handler 去处理，在 handler 中通过调用 dispatchWork 分发任务
+	/*
+		PLEG.Start 的时候会每秒钟启动调用一次relist，根据最新的 PodStatus 生成 PodLiftCycleEvent，然后存入到PLE Channel中。
+		syncLoop 会调用 pleg.Watch 方法获取 PLE Channel 管道，然后传给 syncLoopIteration 方法，
+		在 syncLoopIteration 方法中也就是 plegCh 这个管道，syncLoopIteration 会消费 plegCh 中的数据，在 handler 中通过调用 dispatchWork 分发任务。
+	*/
 	case e := <-plegCh:
+		// 容器处于运行时，记录pod的容器启动的最近时间，确保不会错过正常终止
 		if e.Type == pleg.ContainerStarted {
 			// record the most recent time we observed a container start for this pod.
 			// this lets us selectively invalidate the runtimeCache when processing a delete for this pod
 			// to make sure we don't miss handling graceful termination for containers we reported as having started.
 			kl.lastContainerStartedTime.Add(e.ID, time.Now())
 		}
+		// 容器处于非 ContainerRemoved 状态，并且存在 则更新pod
 		if isSyncPodWorthy(e) {
 			// PLEG event for a pod; sync it.
 			if pod, ok := kl.podManager.GetPodByUID(e.ID); ok {
@@ -1962,29 +1975,31 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 				klog.V(4).Infof("SyncLoop (PLEG): ignore irrelevant event: %#v", e)
 			}
 		}
-
+		// 容器处于异常中，且存在 则清理
 		if e.Type == pleg.ContainerDied {
 			if containerID, ok := e.Data.(string); ok {
 				kl.cleanUpContainersInPod(e.ID, containerID)
 			}
 		}
-	// 读取周期性同步事件的 chan
+	// 读取周期性同步事件的 chan； syncCh 是由 syncLoop 方法里面创建的一个定时任务，每秒钟会向syncCh添加一个数据，然后就会执行到这里。这个方法会同步所有等待同步的pod
 	case <-syncCh:
 		// Sync pods waiting for sync
+		// 获取等待同步的pod列表
 		podsToSync := kl.getPodsToSync()
 		if len(podsToSync) == 0 {
 			break
 		}
 		klog.V(4).Infof("SyncLoop (SYNC): %d pods; %s", len(podsToSync), format.Pods(podsToSync))
+		// 同步最新保存的 pod 状态
 		handler.HandlePodSyncs(podsToSync)
-	// 从 kubelet liveness manager 更新的 chan 里获取
+	// 从 kubelet liveness manager 更新的 chan 里获取；对失败的pod或者liveness检查失败的pod进行sync操作
 	case update := <-kl.livenessManager.Updates():
+		// 如果探针检测失败，需要更新pod的状态
 		if update.Result == proberesults.Failure {
 			// The liveness manager detected a failure; sync the pod.
-
-			// We should not use the pod from livenessManager, because it is never updated after
-			// initialization.
+			// We should not use the pod from livenessManager, because it is never updated after initialization.
 			pod, ok := kl.podManager.GetPodByUID(update.PodUID)
+			// 如果pod不再存在，则忽略更新
 			if !ok {
 				// If the pod no longer exists, ignore the update.
 				klog.V(4).Infof("SyncLoop (container unhealthy): ignore irrelevant update: %#v", update)
@@ -1993,14 +2008,16 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 			klog.V(1).Infof("SyncLoop (container unhealthy): %q", format.Pod(pod))
 			handler.HandlePodSyncs([]*v1.Pod{pod})
 		}
-	// 读取 housekeeping 的 chan
+	// 读取 housekeeping 的 chan；housekeepingCh 这个管道也是由 syncLoop 创建，每两秒钟会触发清理
 	case <-housekeepingCh:
 		if !kl.sourcesReady.AllReady() {
 			// If the sources aren't ready or volume manager has not yet synced the states,
 			// skip housekeeping, as we may accidentally delete pods from unready sources.
+			// 如果源还没有准备好或者卷管理器还没有同步状态。跳过 housekeeping
 			klog.V(4).Infof("SyncLoop (housekeeping, skipped): sources aren't ready yet.")
 		} else {
 			klog.V(4).Infof("SyncLoop (housekeeping)")
+			// 执行一些清理工作，包括终止pod workers、删除不想要的pod，移除volumes、pod目录
 			if err := handler.HandlePodCleanups(); err != nil {
 				klog.Errorf("Failed cleaning pods: %v", err)
 			}
@@ -2011,22 +2028,29 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 
 // dispatchWork starts the asynchronous sync of the pod in a pod worker.
 // If the pod has completed termination, dispatchWork will perform no action.
+
+// 在 pod worker 中启动 pod 的异步同步。 如果 pod 已完成终止，dispatchWork 将不执行任何操作
 func (kl *Kubelet) dispatchWork(pod *v1.Pod, syncType kubetypes.SyncPodType, mirrorPod *v1.Pod, start time.Time) {
 	// check whether we are ready to delete the pod from the API server (all status up to date)
+	// 检查是否准备好从 API server 中删除 pod（所有状态都是最新的)
 	containersTerminal, podWorkerTerminal := kl.podAndContainersAreTerminal(pod)
+	// 指定的 pod 已经执行完毕，应该从API服务器上删除
 	if pod.DeletionTimestamp != nil && containersTerminal {
 		klog.V(4).Infof("Pod %q has completed execution and should be deleted from the API server: %s", format.Pod(pod), syncType)
+		// 重置状态为终止，并触发状态更新
 		kl.statusManager.TerminatePod(pod)
 		return
 	}
 
 	// optimization: avoid invoking the pod worker if no further changes are possible to the pod definition
+	// 如果无法对 pod 定义进行进一步更改，则避免调用pod worker
 	if podWorkerTerminal {
 		klog.V(4).Infof("Pod %q has completed, ignoring remaining sync work: %s", format.Pod(pod), syncType)
 		return
 	}
 
 	// Run the sync in an async worker.
+	// 封装一个UpdatePodOptions结构体丢给podWorkers.UpdatePod去执行,在 async worker中运行 sync
 	kl.podWorkers.UpdatePod(&UpdatePodOptions{
 		Pod:        pod,
 		MirrorPod:  mirrorPod,
@@ -2038,12 +2062,14 @@ func (kl *Kubelet) dispatchWork(pod *v1.Pod, syncType kubetypes.SyncPodType, mir
 		},
 	})
 	// Note the number of containers for new pods.
+	// 注意新 pod 的容器数量
 	if syncType == kubetypes.SyncPodCreate {
 		metrics.ContainersPerPodCount.Observe(float64(len(pod.Spec.Containers)))
 	}
 }
 
 // TODO: handle mirror pods in a separate component (issue #17251)
+// 在一个单独的组件中处理镜舱
 func (kl *Kubelet) handleMirrorPod(mirrorPod *v1.Pod, start time.Time) {
 	// Mirror pod ADD/UPDATE/DELETE operations are considered an UPDATE to the
 	// corresponding static pod. Send update to the pod worker if the static
@@ -2059,34 +2085,44 @@ func (kl *Kubelet) HandlePodAdditions(pods []*v1.Pod) {
 	start := kl.clock.Now()
 	sort.Sort(sliceutils.PodsByCreationTime(pods))
 	for _, pod := range pods {
+		// 将pod添加到pod管理器中，如果有pod不存在在pod管理器中，那么这个pod表示已经被删除了
 		existingPods := kl.podManager.GetPods()
 		// Always add the pod to the pod manager. Kubelet relies on the pod
 		// manager as the source of truth for the desired state. If a pod does
 		// not exist in the pod manager, it means that it has been deleted in
 		// the apiserver and no action (other than cleanup) is required.
+
+		// 始终将 pod 添加到 pod 管理器。 Kubelet 依赖 pod 管理器作为所需状态的真实来源。 如果 pod manager 中不存在 pod，
+		// 则意味着它已在 apiserver 中删除，不需要任何操作（除了清理）
 		kl.podManager.AddPod(pod)
 
+		// 在一个单独的组件中处理镜像pod： https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/static-pod/
 		if kubetypes.IsMirrorPod(pod) {
 			kl.handleMirrorPod(pod, start)
 			continue
 		}
 
+		// 如果该pod没有被 Terminate
 		if !kl.podIsTerminated(pod) {
 			// Only go through the admission process if the pod is not
 			// terminated.
 
 			// We failed pods that we rejected, so activePods include all admitted
 			// pods that are alive.
+			// 获取目前还在active状态的pod
 			activePods := kl.filterOutTerminatedPods(existingPods)
 
 			// Check if we can admit the pod; if not, reject it.
+			// 验证 pod 是否能在该节点运行，如果不可以直接拒绝
 			if ok, reason, message := kl.canAdmitPod(activePods, pod); !ok {
 				kl.rejectPod(pod, reason, message)
 				continue
 			}
 		}
 		mirrorPod, _ := kl.podManager.GetMirrorPodByPod(pod)
+		// 把 pod 分配给给 worker 做异步处理,创建pod
 		kl.dispatchWork(pod, kubetypes.SyncPodCreate, mirrorPod, start)
+		// 在 probeManager 中添加 pod，如果 pod 中定义了 readiness 和 liveness 健康检查，启动 goroutine 定期进行检测
 		kl.probeManager.AddPod(pod)
 	}
 }
@@ -2310,6 +2346,7 @@ func (kl *Kubelet) fastStatusUpdateOnce() {
 }
 
 // isSyncPodWorthy filters out events that are not worthy of pod syncing
+// 过滤掉不值得进行Pod同步的事件
 func isSyncPodWorthy(event *pleg.PodLifecycleEvent) bool {
 	// ContainerRemoved doesn't affect pod state
 	return event.Type != pleg.ContainerRemoved

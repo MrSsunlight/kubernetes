@@ -892,6 +892,8 @@ func (kl *Kubelet) getPullSecretsForPod(pod *v1.Pod) []v1.Secret {
 
 // podStatusIsTerminal reports when the specified pod has no running containers or is no longer accepting
 // spec changes.
+
+// 当指定的pod没有运行的容器或不再接受规格变更时上报
 func (kl *Kubelet) podAndContainersAreTerminal(pod *v1.Pod) (containersTerminal, podWorkerTerminal bool) {
 	// Check the cached pod status which was set after the last sync.
 	status, ok := kl.statusManager.GetPodStatus(pod.UID)

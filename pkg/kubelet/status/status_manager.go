@@ -107,6 +107,7 @@ type Manager interface {
 
 	// TerminatePod resets the container status for the provided pod to terminated and triggers
 	// a status update.
+	// 将所提供的pod的容器状态重置为终止，并触发状态更新
 	TerminatePod(pod *v1.Pod)
 
 	// RemoveOrphanedStatuses scans the status cache and removes any entries for pods not included in

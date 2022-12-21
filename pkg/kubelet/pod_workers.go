@@ -157,6 +157,7 @@ func newPodWorkers(syncPodFn syncPodFnType, recorder record.EventRecorder, workQ
 
 func (p *podWorkers) managePodLoop(podUpdates <-chan UpdatePodOptions) {
 	var lastSyncTime time.Time
+	// 遍历chan
 	for update := range podUpdates {
 		err := func() error {
 			podUID := update.Pod.UID
@@ -165,9 +166,10 @@ func (p *podWorkers) managePodLoop(podUpdates <-chan UpdatePodOptions) {
 			// Time. This ensures the worker doesn't start syncing until
 			// after the cache is at least newer than the finished time of
 			// the previous sync.
+			// 这是一个阻塞调用，直到cache里面有新数据之前这段代码会阻塞，这保证worker在cache里面有新的数据之前不会提前开始
 			status, err := p.podCache.GetNewerThan(podUID, lastSyncTime)
 			if err != nil {
-				// This is the legacy event thrown by manage pod loop
+				// This is the legacy event thrown by manage pod loop`
 				// all other events are now dispatched from syncPodFn
 				p.recorder.Eventf(update.Pod, v1.EventTypeWarning, events.FailedSync, "error determining status: %v", err)
 				return err
@@ -183,6 +185,7 @@ func (p *podWorkers) managePodLoop(podUpdates <-chan UpdatePodOptions) {
 			return err
 		}()
 		// notify the call-back function if the operation succeeded or not
+		// 操作成功与否通知回调函数 OnCompleteFunc
 		if update.OnCompleteFunc != nil {
 			update.OnCompleteFunc(err)
 		}
@@ -197,6 +200,8 @@ func (p *podWorkers) managePodLoop(podUpdates <-chan UpdatePodOptions) {
 // Apply the new setting to the specified pod.
 // If the options provide an OnCompleteFunc, the function is invoked if the update is accepted.
 // Update requests are ignored if a kill pod request is pending.
+
+// 将新设置应用到指定的pod。如果选项提供 OnCompleteFunc，则在接受更新时调用该函数。如果kill pod请求挂起，更新请求将被忽略
 func (p *podWorkers) UpdatePod(options *UpdatePodOptions) {
 	pod := options.Pod
 	uid := pod.UID
@@ -205,11 +210,14 @@ func (p *podWorkers) UpdatePod(options *UpdatePodOptions) {
 
 	p.podLock.Lock()
 	defer p.podLock.Unlock()
+	// 不存在那么会创建一个channel然后执行一个异步协程
 	if podUpdates, exists = p.podUpdates[uid]; !exists {
 		// We need to have a buffer here, because checkForUpdates() method that
 		// puts an update into channel is called from the same goroutine where
 		// the channel is consumed. However, it is guaranteed that in such case
 		// the channel is empty, so buffer of size 1 is enough.
+		// 需要有一个缓冲区，因为将更新放入通道的 checkForUpdates() 方法是由消耗通道的同一个 goroutine 调用的。
+		// 在这种情况下可以保证 通道是空的，所以大小为1的缓冲区就足够了
 		podUpdates = make(chan UpdatePodOptions, 1)
 		p.podUpdates[uid] = podUpdates
 
@@ -217,11 +225,13 @@ func (p *podWorkers) UpdatePod(options *UpdatePodOptions) {
 		// kubelet just restarted. In either case the kubelet is willing to believe
 		// the status of the pod for the first pod worker sync. See corresponding
 		// comment in syncPod.
+		// 创建一个新的pod worker要么意味着这是一个新的pod，要么意味着kubelet刚刚重新启动。无论哪种情况，kubelet都愿意相信第一次pod worker同步时的pod状态
 		go func() {
 			defer runtime.HandleCrash()
 			p.managePodLoop(podUpdates)
 		}()
 	}
+	// 下发更新事件
 	if !p.isWorking[pod.UID] {
 		p.isWorking[pod.UID] = true
 		podUpdates <- *options

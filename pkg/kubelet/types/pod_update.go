@@ -136,6 +136,7 @@ func (sp SyncPodType) String() string {
 }
 
 // IsMirrorPod returns true if the passed Pod is a Mirror Pod.
+// 如果传递的Pod是一个Mirror Pod，则返回tru
 func IsMirrorPod(pod *v1.Pod) bool {
 	_, ok := pod.Annotations[ConfigMirrorAnnotationKey]
 	return ok
